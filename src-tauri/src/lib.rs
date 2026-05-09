@@ -32,6 +32,9 @@ pub fn run() {
             commands::product_cmd::get_product_units,
             commands::product_cmd::get_price_history,
             commands::product_cmd::record_price,
+            commands::product_cmd::get_categories,
+            commands::product_cmd::get_all_units,
+
             // Orders
             commands::order_cmd::create_daily_order,
             commands::order_cmd::get_daily_orders,
@@ -39,20 +42,36 @@ pub fn run() {
             commands::order_cmd::add_order_item,
             commands::order_cmd::update_order_item,
             commands::order_cmd::delete_order_item,
+            commands::order_cmd::delete_daily_order,
             commands::order_cmd::toggle_item_checklist,
             commands::order_cmd::get_aggregate_shopping_list,
+            // PO Sections
+            commands::order_cmd::create_po_section,
+            commands::order_cmd::update_po_section,
+            commands::order_cmd::delete_po_section,
+            // PO Workflow
+            commands::order_cmd::forward_po_to_delivery,
+            commands::order_cmd::sync_po_to_delivery,
+            commands::order_cmd::update_po_status,
+            commands::order_cmd::get_aggregate_by_date,
             // Delivery
             commands::delivery_cmd::generate_delivery_note,
             commands::delivery_cmd::get_delivery_notes,
             commands::delivery_cmd::get_delivery_note_detail,
+            commands::delivery_cmd::finalize_delivery_note,
             // Invoice
             commands::invoice_cmd::generate_invoice,
             commands::invoice_cmd::get_invoices,
             commands::invoice_cmd::get_invoice_detail,
             commands::invoice_cmd::finalize_invoice,
+            commands::invoice_cmd::update_invoice_item,
+            commands::invoice_cmd::delete_invoice_item,
+            commands::invoice_cmd::add_manual_invoice_item,
             // Reports
             commands::report_cmd::get_margin_report,
             commands::report_cmd::get_daily_summary,
+            // Database
+            db::reset_database,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

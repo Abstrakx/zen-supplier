@@ -155,3 +155,84 @@ pub fn finalize_invoice(state: State<'_, DbState>, invoice_id: String) -> Result
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn update_invoice_item(state: State<'_, DbState>, item_id: String, quantity: f64, unit_price: f64) -> Result<(), String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let subtotal = quantity * unit_price;
+    tx.execute(
+        "UPDATE invoice_items SET quantity = ?1, unit_price = ?2, subtotal = ?3 WHERE id = ?4",
+        rusqlite::params![quantity, unit_price, subtotal, item_id],
+    ).map_err(|e| e.to_string())?;
+
+    // Update total amount of the invoice
+    let invoice_id: String = tx.query_row(
+        "SELECT invoice_id FROM invoice_items WHERE id = ?1",
+        [&item_id],
+        |r| r.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    let total: f64 = tx.query_row(
+        "SELECT SUM(subtotal) FROM invoice_items WHERE invoice_id = ?1",
+        [&invoice_id],
+        |r| r.get(0),
+    ).unwrap_or(0.0);
+
+    tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, invoice_id]).map_err(|e| e.to_string())?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_invoice_item(state: State<'_, DbState>, item_id: String) -> Result<(), String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let invoice_id: String = tx.query_row(
+        "SELECT invoice_id FROM invoice_items WHERE id = ?1",
+        [&item_id],
+        |r| r.get(0),
+    ).map_err(|e| e.to_string())?;
+
+    tx.execute("DELETE FROM invoice_items WHERE id = ?1", [&item_id]).map_err(|e| e.to_string())?;
+
+    let total: f64 = tx.query_row(
+        "SELECT SUM(subtotal) FROM invoice_items WHERE invoice_id = ?1",
+        [&invoice_id],
+        |r| r.get(0),
+    ).unwrap_or(0.0);
+
+    tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, invoice_id]).map_err(|e| e.to_string())?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn add_manual_invoice_item(state: State<'_, DbState>, invoice_id: String, product_name: String, quantity: f64, unit: String, unit_price: f64) -> Result<(), String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    let id = Uuid::new_v4().to_string();
+    let subtotal = quantity * unit_price;
+    
+    tx.execute(
+        "INSERT INTO invoice_items (id, invoice_id, product_name, quantity, unit, unit_price, subtotal) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        rusqlite::params![id, invoice_id, product_name, quantity, unit, unit_price, subtotal],
+    ).map_err(|e| e.to_string())?;
+
+    let total: f64 = tx.query_row(
+        "SELECT SUM(subtotal) FROM invoice_items WHERE invoice_id = ?1",
+        [&invoice_id],
+        |r| r.get(0),
+    ).unwrap_or(0.0);
+
+    tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, invoice_id]).map_err(|e| e.to_string())?;
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}

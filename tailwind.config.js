@@ -5,7 +5,12 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Montserrat', 'ui-sans-serif', 'system-ui'],
+        display: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+      },
+    },
   },
   plugins: [],
 }

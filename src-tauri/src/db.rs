@@ -54,8 +54,10 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
             name TEXT NOT NULL,
             base_unit TEXT NOT NULL,
             category TEXT,
+            supplier_id TEXT,
             is_active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
         );
 
         -- Product units (one-to-many)
@@ -83,14 +85,17 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
 
         -- ═══ PO & ORDER SYSTEM ═══
 
-        -- Daily Order header (1 per hari)
+        -- Daily Order header (1 per hari per dapur)
         CREATE TABLE IF NOT EXISTS daily_orders (
             id TEXT PRIMARY KEY,
             order_date TEXT NOT NULL,
+            kitchen_id TEXT,
+            po_number TEXT,
             title TEXT,
             status TEXT DEFAULT 'draft',
             created_at TEXT DEFAULT (datetime('now')),
-            updated_at TEXT DEFAULT (datetime('now'))
+            updated_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (kitchen_id) REFERENCES kitchens(id)
         );
 
         -- Order items (per item per dapur)
@@ -112,9 +117,22 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
             sell_price REAL,
             created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now')),
+            po_section_id TEXT,
+            is_new_product INTEGER DEFAULT 0,
             FOREIGN KEY (daily_order_id) REFERENCES daily_orders(id) ON DELETE CASCADE,
             FOREIGN KEY (kitchen_id) REFERENCES kitchens(id),
-            FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id),
+            FOREIGN KEY (po_section_id) REFERENCES po_sections(id)
+        );
+
+        -- PO Sections (sub-POs: Harian, Rapelan, etc.)
+        CREATE TABLE IF NOT EXISTS po_sections (
+            id TEXT PRIMARY KEY,
+            daily_order_id TEXT NOT NULL,
+            section_name TEXT NOT NULL DEFAULT 'Harian',
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (daily_order_id) REFERENCES daily_orders(id) ON DELETE CASCADE
         );
 
         -- ═══ SURAT JALAN ═══
@@ -177,6 +195,52 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
         );
         ",
     )?;
+    
+    // ═══ MIGRATIONS ═══
+    // Simple migration to add missing columns to existing tables
+    let _ = conn.execute("ALTER TABLE suppliers ADD COLUMN phone TEXT", []);
+    let _ = conn.execute("ALTER TABLE suppliers ADD COLUMN address TEXT", []);
+    let _ = conn.execute("ALTER TABLE products ADD COLUMN supplier_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE products ADD COLUMN item_type TEXT DEFAULT 'dapur'", []);
+    let _ = conn.execute("ALTER TABLE daily_orders ADD COLUMN kitchen_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE daily_orders ADD COLUMN po_number TEXT", []);
+    let _ = conn.execute("ALTER TABLE order_items ADD COLUMN po_section_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE order_items ADD COLUMN is_new_product INTEGER DEFAULT 0", []);
+    // Create po_sections table if not exists (for existing DBs)
+    let _ = conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS po_sections (
+            id TEXT PRIMARY KEY,
+            daily_order_id TEXT NOT NULL,
+            section_name TEXT NOT NULL DEFAULT 'Harian',
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (daily_order_id) REFERENCES daily_orders(id) ON DELETE CASCADE
+        );"
+    );
 
     Ok(conn)
+}
+
+#[tauri::command]
+pub fn reset_database(state: tauri::State<'_, crate::commands::DbState>) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Disable foreign keys temporarily to drop everything
+    let _ = conn.execute("PRAGMA foreign_keys = OFF", []);
+
+    let tables = [
+        "invoice_items", "invoices",
+        "delivery_note_items", "delivery_notes",
+        "order_items", "daily_orders",
+        "price_history", "product_units", "products",
+        "kitchens", "suppliers"
+    ];
+
+    for table in tables {
+        let _ = conn.execute(&format!("DROP TABLE IF EXISTS {}", table), []);
+    }
+
+    let _ = conn.execute("PRAGMA foreign_keys = ON", []);
+
+    Ok(())
 }

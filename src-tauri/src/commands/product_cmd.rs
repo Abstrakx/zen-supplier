@@ -29,6 +29,8 @@ pub struct Product {
     pub name: String,
     pub base_unit: String,
     pub category: Option<String>,
+    pub supplier_id: Option<String>,
+    pub item_type: Option<String>,
     pub is_active: bool,
     pub units: Vec<ProductUnit>,
     pub latest_buy_price: Option<f64>,
@@ -41,6 +43,8 @@ pub struct UnitPayload {
     pub unit_name: String,
     pub conversion_to_base: f64,
     pub is_base_unit: bool,
+    pub buy_price: Option<f64>,
+    pub sell_price: Option<f64>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -48,6 +52,8 @@ pub struct CreateProductPayload {
     pub name: String,
     pub base_unit: String,
     pub category: Option<String>,
+    pub supplier_id: Option<String>,
+    pub item_type: Option<String>,
     pub units: Vec<UnitPayload>,
     pub buy_price: Option<f64>,
     pub sell_price: Option<f64>,
@@ -70,7 +76,7 @@ pub fn get_products(state: State<'_, DbState>) -> Result<Vec<Product>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn
-        .prepare("SELECT id, name, base_unit, category, is_active, created_at FROM products ORDER BY name")
+        .prepare("SELECT id, name, base_unit, category, supplier_id, is_active, created_at, COALESCE(item_type, 'dapur') as item_type FROM products ORDER BY name")
         .map_err(|e| e.to_string())?;
 
     let product_rows = stmt
@@ -80,11 +86,13 @@ pub fn get_products(state: State<'_, DbState>) -> Result<Vec<Product>, String> {
                 name: row.get(1)?,
                 base_unit: row.get(2)?,
                 category: row.get(3)?,
-                is_active: row.get::<_, i32>(4)? != 0,
+                supplier_id: row.get(4)?,
+                is_active: row.get::<_, i32>(5)? != 0,
                 units: vec![],
                 latest_buy_price: None,
                 latest_sell_price: None,
-                created_at: row.get(5)?,
+                created_at: row.get(6)?,
+                item_type: row.get(7)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -144,8 +152,8 @@ pub fn create_product(state: State<'_, DbState>, payload: CreateProductPayload) 
     let product_id = Uuid::new_v4().to_string();
 
     tx.execute(
-        "INSERT INTO products (id, name, base_unit, category) VALUES (?1, ?2, ?3, ?4)",
-        rusqlite::params![product_id, payload.name, payload.base_unit, payload.category],
+        "INSERT INTO products (id, name, base_unit, category, supplier_id, item_type) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![product_id, payload.name, payload.base_unit, payload.category, payload.supplier_id, payload.item_type.as_deref().unwrap_or("dapur")],
     )
     .map_err(|e| e.to_string())?;
 
@@ -175,6 +183,26 @@ pub fn create_product(state: State<'_, DbState>, payload: CreateProductPayload) 
             rusqlite::params![uid, product_id, u.unit_name, u.conversion_to_base],
         )
         .map_err(|e| e.to_string())?;
+
+        if let Some(buy) = u.buy_price {
+            if buy > 0.0 {
+                let pid = Uuid::new_v4().to_string();
+                tx.execute(
+                    "INSERT INTO price_history (id, product_id, price_type, price, unit_id) VALUES (?1, ?2, 'buy', ?3, ?4)",
+                    rusqlite::params![pid, product_id, buy, uid],
+                ).map_err(|e| e.to_string())?;
+            }
+        }
+        if let Some(sell) = u.sell_price {
+            if sell > 0.0 {
+                let pid = Uuid::new_v4().to_string();
+                tx.execute(
+                    "INSERT INTO price_history (id, product_id, price_type, price, unit_id) VALUES (?1, ?2, 'sell', ?3, ?4)",
+                    rusqlite::params![pid, product_id, sell, uid],
+                ).map_err(|e| e.to_string())?;
+            }
+        }
+
         units.push(ProductUnit {
             id: uid,
             unit_name: u.unit_name.clone(),
@@ -214,6 +242,8 @@ pub fn create_product(state: State<'_, DbState>, payload: CreateProductPayload) 
         name: payload.name,
         base_unit: payload.base_unit,
         category: payload.category,
+        supplier_id: payload.supplier_id,
+        item_type: Some(payload.item_type.unwrap_or_else(|| "dapur".to_string())),
         is_active: true,
         units,
         latest_buy_price: payload.buy_price,
@@ -331,4 +361,39 @@ pub fn record_price(state: State<'_, DbState>, product_id: String, price_type: S
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+#[tauri::command]
+pub fn get_categories(state: State<'_, DbState>) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT category FROM products WHERE category IS NOT NULL AND category != '' ORDER BY category")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+    let mut categories = Vec::new();
+    for r in rows {
+        if let Ok(c) = r {
+            categories.push(c);
+        }
+    }
+    Ok(categories)
+}
+
+#[tauri::command]
+pub fn get_all_units(state: State<'_, DbState>) -> Result<Vec<String>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT DISTINCT unit_name FROM product_units WHERE unit_name IS NOT NULL AND unit_name != '' ORDER BY unit_name")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+    let mut units = Vec::new();
+    for r in rows {
+        if let Ok(u) = r {
+            units.push(u);
+        }
+    }
+    Ok(units)
 }

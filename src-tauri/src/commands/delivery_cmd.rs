@@ -102,3 +102,94 @@ pub fn get_delivery_note_detail(state: State<'_, DbState>, note_id: String) -> R
     for r in rows { if let Ok(i) = r { items.push(i); } }
     Ok(DeliveryNoteDetail { note, items })
 }
+
+#[tauri::command]
+pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Result<(), String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // 1. Get SJ details
+    let (daily_order_id, kitchen_id, delivery_date): (String, String, String) = tx.query_row(
+        "SELECT daily_order_id, kitchen_id, delivery_date FROM delivery_notes WHERE id = ?1",
+        [&note_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+    ).map_err(|e| e.to_string())?;
+
+    // 2. Update SJ status
+    tx.execute("UPDATE delivery_notes SET status = 'done' WHERE id = ?1", [&note_id]).map_err(|e| e.to_string())?;
+
+    // 3. Update PO status
+    tx.execute("UPDATE daily_orders SET status = 'done' WHERE id = ?1", [&daily_order_id]).map_err(|e| e.to_string())?;
+
+    // 4. Generate Invoices
+    // We'll generate both "daily" and "operational" invoices if items exist for them.
+    for inv_type in ["daily", "operational"] {
+        let cat_filter = if inv_type == "daily" { "('internal','external')" } else { "('operational')" };
+        
+        // Check if any items exist for this type
+        let has_items: i64 = tx.query_row(
+            &format!("SELECT COUNT(*) FROM order_items WHERE daily_order_id=?1 AND kitchen_id=?2 AND category IN {}", cat_filter),
+            rusqlite::params![daily_order_id, kitchen_id],
+            |r| r.get(0)
+        ).map_err(|e| e.to_string())?;
+
+        if has_items > 0 {
+            let _kitchen_name: String = tx.query_row("SELECT name FROM kitchens WHERE id=?1", [&kitchen_id], |r| r.get(0)).map_err(|e| e.to_string())?;
+            let count: i64 = tx.query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+            
+            let parts: Vec<&str> = delivery_date.split('-').collect();
+            let m = parts.get(1).unwrap_or(&"01").parse::<u32>().unwrap_or(1);
+            let y = parts.first().unwrap_or(&"2026");
+            
+            let month_roman = |m: u32| -> &'static str {
+                match m { 1=>"I",2=>"II",3=>"III",4=>"IV",5=>"V",6=>"VI",7=>"VII",8=>"VIII",9=>"IX",10=>"X",11=>"XI",12=>"XII",_=>"I" }
+            };
+            
+            let invoice_number = format!("{:02}/ZS/{}/{}", count + 1, month_roman(m), y);
+            let inv_id = Uuid::new_v4().to_string();
+
+            tx.execute(
+                "INSERT INTO invoices (id, daily_order_id, kitchen_id, invoice_number, invoice_type, invoice_date, status) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'draft')",
+                rusqlite::params![inv_id, daily_order_id, kitchen_id, invoice_number, inv_type, delivery_date],
+            ).map_err(|e| e.to_string())?;
+
+            // Copy items to invoice
+            let mut total = 0.0;
+            {
+                let mut stmt = tx.prepare(
+                    &format!("SELECT product_name, quantity, unit, buy_price, sell_price, id FROM order_items WHERE daily_order_id=?1 AND kitchen_id=?2 AND category IN {}", cat_filter)
+                ).map_err(|e| e.to_string())?;
+
+                let items = stmt.query_map(rusqlite::params![daily_order_id, kitchen_id], |r| {
+                    Ok((r.get::<_, String>(0)?, r.get::<_, f64>(1)?, r.get::<_, String>(2)?, r.get::<_, Option<f64>>(3)?, r.get::<_, Option<f64>>(4)?, r.get::<_, String>(5)?))
+                }).map_err(|e| e.to_string())?;
+
+                let day_names = ["MINGGU","SENIN","SELASA","RABU","KAMIS","JUMAT","SABTU"];
+                let day_name = chrono::NaiveDate::parse_from_str(&delivery_date, "%Y-%m-%d").ok().map(|d| {
+                    use chrono::Datelike;
+                    let wd = d.weekday().num_days_from_sunday();
+                    day_names[wd as usize].to_string()
+                });
+
+                for item in items {
+                    if let Ok((pn, q, u, bp, sp, oid)) = item {
+                        let sell = sp.unwrap_or(0.0);
+                        let sub = q * sell;
+                        total += sub;
+                        let iid = Uuid::new_v4().to_string();
+                        tx.execute(
+                            "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal) 
+                             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                            rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub],
+                        ).map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+            tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, inv_id]).map_err(|e| e.to_string())?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}

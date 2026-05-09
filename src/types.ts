@@ -43,6 +43,8 @@ export interface Product {
   name: string;
   base_unit: string;
   category: string | null;
+  supplier_id: string | null;
+  item_type: string | null;
   is_active: boolean;
   units: ProductUnit[];
   latest_buy_price: number | null;
@@ -55,12 +57,22 @@ export interface Product {
 export interface DailyOrder {
   id: string;
   order_date: string;
+  kitchen_id: string | null;
+  kitchen_name: string | null;
+  po_number: string | null;
   title: string | null;
   status: string;
   item_count: number;
   checked_count: number;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface PoSection {
+  id: string;
+  daily_order_id: string;
+  section_name: string;
+  sort_order: number;
 }
 
 export type ItemCategory = 'internal' | 'external' | 'operational';
@@ -82,10 +94,13 @@ export interface OrderItem {
   notes: string | null;
   buy_price: number | null;
   sell_price: number | null;
+  po_section_id: string | null;
+  is_new_product: boolean;
 }
 
 export interface DailyOrderDetail {
   order: DailyOrder;
+  sections: PoSection[];
   items: OrderItem[];
 }
 
@@ -199,6 +214,7 @@ export type NavPage =
   | 'delivery-notes'
   | 'invoices'
   | 'catalog'
+  | 'product-registration'
   | 'reports'
   | 'settings';
 
@@ -211,8 +227,15 @@ export interface UnitConversionPayload {
 export interface AddProductPayload {
   name: string;
   base_unit: string;
-  buy_price: number;
-  sell_price: number;
-  supplier_id: number | null;
-  units: UnitConversionPayload[];
+  category: string | null;
+  supplier_id: string | null;
+  units: { 
+    unit_name: string; 
+    conversion_to_base: number; 
+    is_base_unit: boolean;
+    buy_price: number | null;
+    sell_price: number | null;
+  }[];
+  buy_price: number | null;
+  sell_price: number | null;
 }
