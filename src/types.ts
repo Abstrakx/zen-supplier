@@ -27,6 +27,8 @@ export interface ProductUnit {
   unit_name: string;
   conversion_to_base: number;
   is_base_unit: boolean;
+  latest_buy_price: number | null;
+  latest_sell_price: number | null;
 }
 
 export interface PriceRecord {
@@ -41,6 +43,7 @@ export interface PriceRecord {
 export interface Product {
   id: string;
   name: string;
+  neto?: string | null;
   base_unit: string;
   category: string | null;
   supplier_id: string | null;
@@ -115,6 +118,7 @@ export interface AggregateItem {
   unit: string;
   total_quantity: number;
   category: string;
+  is_external: boolean;
   distributions: KitchenDistribution[];
 }
 
@@ -205,6 +209,34 @@ export interface DailySummary {
   kitchen_count: number;
 }
 
+export interface InvoiceReportItem {
+  product_name: string;
+  unit: string;
+  jenis: string | null;
+  quantity: number;
+  harga: number;
+  jual: number;
+  keuntungan_per_pcs: number;
+  total_invoice: number;
+  total_modal: number;
+  keuntungan_per_bahan: number;
+}
+
+export interface InvoiceReport {
+  daily_order_id: string;
+  invoice_id: string;
+  invoice_number: string;
+  invoice_date: string;
+  kitchen_name: string;
+  kitchen_id: string;
+  invoice_type: string;
+  status: string;
+  grand_total_invoice: number;
+  grand_total_modal: number;
+  grand_total_keuntungan: number;
+  items: InvoiceReportItem[];
+}
+
 // ═══ NAV ═══
 
 export type NavPage =
@@ -214,6 +246,7 @@ export type NavPage =
   | 'delivery-notes'
   | 'invoices'
   | 'catalog'
+  | 'product-detail'
   | 'product-registration'
   | 'reports'
   | 'settings';

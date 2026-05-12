@@ -44,6 +44,7 @@ pub fn run() {
             commands::order_cmd::delete_order_item,
             commands::order_cmd::delete_daily_order,
             commands::order_cmd::toggle_item_checklist,
+            commands::order_cmd::get_next_po_sequence,
             commands::order_cmd::get_aggregate_shopping_list,
             // PO Sections
             commands::order_cmd::create_po_section,
@@ -70,6 +71,7 @@ pub fn run() {
             // Reports
             commands::report_cmd::get_margin_report,
             commands::report_cmd::get_daily_summary,
+            commands::report_cmd::get_invoice_report,
             // Database
             db::reset_database,
         ])

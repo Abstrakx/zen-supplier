@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Receipt,
@@ -131,6 +131,16 @@ export const InvoicePage: React.FC = () => {
       (inv.kitchen_name || "").toLowerCase().includes(search.toLowerCase()),
   );
 
+  const groupedInvoices = useMemo(() => {
+    const groups: Record<string, Invoice[]> = {};
+    filteredInvoices.forEach(inv => {
+      const key = inv.daily_order_id || `${inv.kitchen_id}-${inv.invoice_date}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(inv);
+    });
+    return Object.values(groups).sort((a, b) => b[0].invoice_date.localeCompare(a[0].invoice_date));
+  }, [filteredInvoices]);
+
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
@@ -181,62 +191,74 @@ export const InvoicePage: React.FC = () => {
           </div>
         )}
 
-        <div className="max-w-5xl mx-auto space-y-4">
-          {filteredInvoices.map((inv) => (
-            <div
-              key={inv.id}
-              className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-6">
-                <div
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition-all shadow-sm shrink-0 
-                  ${inv.invoice_type === "daily" ? "bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white" : "bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white"}`}
-                >
-                  <Receipt size={22} strokeWidth={2.5} />
-                </div>
+        <div className="max-w-7xl mx-auto space-y-8">
+          {groupedInvoices.map((group: Invoice[], idx: number) => (
+            <div key={idx} className="space-y-4">
+              <div className="flex items-center gap-3 px-2">
+                <div className="w-1.5 h-6 bg-amber-500 rounded-full shadow-sm shadow-amber-200"></div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-black text-slate-800 text-lg tracking-tight">
-                      {inv.invoice_number}
-                    </h3>
-                    <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest border 
-                      ${inv.invoice_type === "daily" ? "bg-amber-50 text-amber-500 border-amber-100" : "bg-emerald-50 text-emerald-500 border-emerald-100"}`}
-                    >
-                      {inv.invoice_type === "daily" ? "HARIAN" : "OPS"}
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-3">
+                    {group[0].kitchen_name}
+                    <span className="text-[10px] text-slate-400 font-bold bg-white border border-slate-100 px-2.5 py-1 rounded-lg shadow-sm">
+                      {group[0].invoice_date}
                     </span>
-                    {inv.status === "finalized" && (
-                      <span className="flex items-center gap-1 text-[10px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-widest">
-                        <CheckCircle2 size={10} /> FINALIZED
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-xs font-bold text-slate-400 uppercase tracking-tighter">
-                    <span className="text-slate-800">{inv.kitchen_name}</span>
-                    <span className="text-slate-200">•</span>
-                    <span>{inv.invoice_date}</span>
-                    <span className="text-slate-200">•</span>
-                    <span className="text-blue-600 font-black">
-                      Rp {inv.total_amount.toLocaleString("id-ID")}
-                    </span>
-                  </div>
+                  </h3>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => viewDetail(inv.id)}
-                  className="bg-slate-50 hover:bg-slate-100 text-slate-800 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-slate-200 flex items-center gap-2"
-                >
-                  <Eye size={14} /> LIHAT
-                </button>
-                {inv.status !== "finalized" && (
-                  <button
-                    onClick={() => finalize(inv.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all border border-blue-600 flex items-center gap-2"
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {group.map((inv: Invoice) => (
+                  <div
+                    key={inv.id}
+                    className="bg-white p-5 rounded-4xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-between group"
                   >
-                    FINALISASI
-                  </button>
-                )}
+                    <div className="flex items-center gap-5">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-inner transition-all duration-300 ${inv.invoice_type === 'operational'
+                        ? 'bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-600 group-hover:text-white'
+                        : 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
+                        }`}>
+                        <Receipt size={24} strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-black text-slate-800 text-lg tracking-tight">
+                            {inv.invoice_number}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5 text-[10px] font-bold uppercase tracking-widest">
+                          <span className={`${inv.invoice_type === 'operational' ? 'text-purple-500' : 'text-amber-600'
+                            } bg-slate-50 px-2 py-0.5 rounded border border-slate-100`}>
+                            {inv.invoice_type === 'operational' ? 'OPS' : 'BAHAN DAPUR'}
+                          </span>
+                          <span className="text-slate-200">•</span>
+                          <span className="text-slate-400 font-medium">{inv.item_count} ITEMS</span>
+                          <span className="text-slate-200">•</span>
+                          <span className="text-emerald-600 font-black">
+                            Rp {inv.total_amount.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                      <button
+                        onClick={() => viewDetail(inv.id)}
+                        className="p-3 bg-slate-50 text-slate-400 hover:bg-blue-600 hover:text-white rounded-2xl transition-all border border-slate-100 shadow-sm"
+                        title="Lihat Detail"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      {inv.status !== "finalized" && (
+                        <button
+                          onClick={() => finalize(inv.id)}
+                          className="p-3 bg-slate-50 text-slate-400 hover:bg-emerald-600 hover:text-white rounded-2xl transition-all border border-slate-100 shadow-sm"
+                          title="Finalisasi"
+                        >
+                          <CheckCircle2 size={18} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}

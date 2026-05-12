@@ -9,9 +9,10 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  UtensilsCrossed,
 } from "lucide-react";
+import appIcon from "../assets/app-icon.png";
 import type { NavPage } from "../types";
+
 
 interface SidebarProps {
   activeNav?: NavPage;
@@ -62,7 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`${collapsed ? "px-3 py-5" : "px-5 py-5"} border-b border-white/6 flex items-center gap-3`}
       >
         <div className="p-2 bg-linear-to-br from-emerald-500/20 to-green-500/20 rounded-xl text-emerald-400 shrink-0">
-          <UtensilsCrossed size={collapsed ? 20 : 22} />
+          <img
+            src={appIcon}
+            alt="Zen Supplier"
+            className={`${collapsed ? "w-8 h-8" : "w-10 h-10"} object-contain`}
+          />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">

@@ -119,7 +119,7 @@ export const DeliveryNotePage: React.FC = () => {
           </div>
         )}
 
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="max-w-7xl mx-auto space-y-4">
           {filteredNotes.map((n) => (
             <div
               key={n.id}

@@ -35,10 +35,34 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
     new Date().toLocaleDateString("sv-SE"),
   );
   const [selectedKitchenId, setSelectedKitchenId] = useState("");
+  const [customSeq, setCustomSeq] = useState<number>(1);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (showCreate && newDate) {
+      invoke<number>("get_next_po_sequence", { orderDate: newDate })
+        .then(seq => setCustomSeq(seq))
+        .catch(err => console.error(err));
+    }
+  }, [showCreate, newDate]);
+
+  const poPreview = useMemo(() => {
+    if (!selectedKitchenId || !newDate) return "";
+    const kitchen = kitchens.find(k => k.id === selectedKitchenId);
+    if (!kitchen) return "";
+    
+    const parts = newDate.split("-");
+    const year = parts[0];
+    const month = parseInt(parts[1]);
+    const romans = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+    const roman = romans[month - 1] || "I";
+    const seq = customSeq.toString().padStart(2, '0');
+    
+    return `${seq}/ZS-${kitchen.code}/${roman}/${year}`;
+  }, [selectedKitchenId, newDate, customSeq, kitchens]);
 
   const loadData = async () => {
     try {
@@ -103,7 +127,11 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
     }
     try {
       const order = await invoke<DailyOrder>("create_daily_order", {
-        payload: { order_date: newDate, kitchen_id: selectedKitchenId },
+        payload: { 
+          order_date: newDate, 
+          kitchen_id: selectedKitchenId,
+          custom_seq: customSeq
+        },
       });
       setShowCreate(false);
 
@@ -329,6 +357,28 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
                       <option key={k.id} value={k.id}>{k.name}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                    No. Urut PO
+                  </label>
+                  <input
+                    type="number"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-blue-500 font-semibold text-slate-800 transition-all focus:ring-4 focus:ring-blue-500/10"
+                    value={customSeq}
+                    onChange={(e) => setCustomSeq(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5 block">
+                    Preview Nomor
+                  </label>
+                  <div className="px-4 py-3.5 bg-blue-50/50 border border-blue-100 rounded-2xl text-[10px] font-mono font-black text-blue-600 truncate">
+                    {poPreview || "-"}
+                  </div>
                 </div>
               </div>
             </div>

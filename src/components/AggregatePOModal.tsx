@@ -96,9 +96,14 @@ export const AggregatePOModal: React.FC<Props> = ({ date, onClose }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {data.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={idx} className={`transition-colors ${item.is_external ? "bg-amber-50 hover:bg-amber-100/50" : "hover:bg-slate-50/50"}`}>
                       <td className="px-6 py-4">
-                        <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{item.product_name}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{item.product_name}</div>
+                          {item.is_external && (
+                            <span className="text-[8px] bg-amber-200 text-amber-700 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter">EXTERNAL</span>
+                          )}
+                        </div>
                         <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.category}</div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -168,8 +173,13 @@ export const AggregatePOModal: React.FC<Props> = ({ date, onClose }) => {
           </thead>
           <tbody>
             {data.map((item, idx) => (
-              <tr key={idx}>
-                <td className="border-2 border-slate-900 px-4 py-3 font-black uppercase">{item.product_name}</td>
+              <tr key={idx} className={item.is_external ? "bg-amber-50" : ""}>
+                <td className="border-2 border-slate-900 px-4 py-3 font-black uppercase">
+                  {item.product_name}
+                  {item.is_external && (
+                    <span className="ml-2 text-[8px] border border-slate-900 px-1">EXT</span>
+                  )}
+                </td>
                 <td className="border-2 border-slate-900 px-4 py-3 text-right font-black text-lg">{item.total_quantity}</td>
                 <td className="border-2 border-slate-900 px-4 py-3 font-bold uppercase">{item.unit}</td>
                 {view === "logistics" && (

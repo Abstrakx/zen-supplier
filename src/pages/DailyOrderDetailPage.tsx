@@ -459,6 +459,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
       .filter(
         (p) =>
           p.name.toLowerCase().includes(l) ||
+          (p.neto && p.neto.toLowerCase().includes(l)) ||
           (p.base_unit && p.base_unit.toLowerCase().includes(l)),
       )
       .slice(0, 6);
@@ -479,7 +480,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
           daily_order_id: orderId,
           kitchen_id: kitchenId,
           product_id: product.id,
-          product_name: product.name,
+          product_name: product.neto ? `${product.name} @${product.neto}` : product.name,
           quantity: 1,
           unit: product.base_unit,
           unit_id: null,
@@ -603,7 +604,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
                   >
                     <div>
                       <p className="font-semibold text-slate-800 text-sm group-hover:text-blue-700 transition-colors">
-                        {p.name}
+                        {p.name} {p.neto ? <span className="text-blue-600 opacity-80">@{p.neto}</span> : ""}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
                         {p.base_unit} • {p.category || "Umum"}

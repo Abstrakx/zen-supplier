@@ -48,17 +48,38 @@ pub fn generate_invoice(state: State<'_, DbState>, daily_order_id: String, kitch
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let kitchen_name: String = tx.query_row("SELECT name FROM kitchens WHERE id=?1", [&kitchen_id], |r| r.get(0)).map_err(|e| e.to_string())?;
-    let count: i64 = tx.query_row("SELECT COUNT(*) FROM invoices", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+    let (kitchen_name, kitchen_code): (String, String) = tx.query_row(
+        "SELECT name, code FROM kitchens WHERE id=?1", 
+        [&kitchen_id], 
+        |r| Ok((r.get(0)?, r.get(1)?))
+    ).map_err(|e| e.to_string())?;
+
+    let po_number: String = tx
+        .query_row(
+            "SELECT po_number FROM daily_orders WHERE id = ?1",
+            [&daily_order_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| format!("PO not found: {}", e))?;
+    let po_seq = po_number.split('/').next().unwrap_or("01");
+
     let parts: Vec<&str> = invoice_date.split('-').collect();
     let m = parts.get(1).unwrap_or(&"01").parse::<u32>().unwrap_or(1);
     let y = parts.first().unwrap_or(&"2026");
-    let invoice_number = format!("{:02}/ZS/{}/{}", count+1, month_roman(m), y);
+    let prefix = if invoice_type == "daily" { "ZS" } else { "AGS" };
+    let invoice_number = format!("{}/{}-{}/{}/{}", po_seq, prefix, kitchen_code, month_roman(m), y);
     let id = Uuid::new_v4().to_string();
 
-    // Filter categories based on invoice_type
-    let cat_filter = if invoice_type == "daily" { "('internal','external')" } else { "('operational')" };
-    let query = format!("SELECT id,product_name,quantity,unit,buy_price,sell_price FROM order_items WHERE daily_order_id=?1 AND kitchen_id=?2 AND category IN {}", cat_filter);
+    // Filter based on product item_type ('dapur' vs 'operasional')
+    let type_filter = if invoice_type == "daily" { "dapur" } else { "operational" };
+    let query = format!(
+        "SELECT oi.id, oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price 
+         FROM order_items oi
+         LEFT JOIN products p ON oi.product_id = p.id
+         WHERE oi.daily_order_id = ?1 AND oi.kitchen_id = ?2 
+         AND COALESCE(p.item_type, 'dapur') = '{}'",
+        type_filter
+    );
 
     tx.execute("INSERT INTO invoices (id,daily_order_id,kitchen_id,invoice_number,invoice_type,invoice_date) VALUES(?1,?2,?3,?4,?5,?6)", rusqlite::params![id, daily_order_id, kitchen_id, invoice_number, invoice_type, invoice_date]).map_err(|e| e.to_string())?;
 

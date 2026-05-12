@@ -20,9 +20,11 @@ import "@fontsource/montserrat/400-italic.css"; // Italic
 // Import Plus Jakarta Sans
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/700.css";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
 
 export default function App() {
   const [activeNav, setActiveNav] = useState<NavPage>("dashboard");
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -31,7 +33,26 @@ export default function App() {
       case "dashboard":
         return <DashboardPage onNavigate={setActiveNav} />;
       case "catalog":
-        return <CatalogPage onNavigate={setActiveNav} />;
+        return (
+          <CatalogPage
+            onNavigate={setActiveNav}
+            onViewProduct={(id) => {
+              setSelectedId(id);
+              setActiveNav("product-detail");
+            }}
+          />
+        );
+      case "product-detail":
+        return (
+          <ProductDetailPage
+            productId={selectedId || ""}
+            onBack={() => setActiveNav("catalog")}
+            onEditProduct={(p) => {
+              setEditingProduct(p);
+              setActiveNav("product-registration");
+            }}
+          />
+        );
       case "daily-orders":
         return (
           <DailyOrderPage
@@ -54,7 +75,13 @@ export default function App() {
         return <InvoicePage />;
       case "product-registration":
         return (
-          <ProductRegistrationPage onBack={() => setActiveNav("catalog")} />
+          <ProductRegistrationPage
+            onBack={() => {
+              setEditingProduct(null);
+              setActiveNav("catalog");
+            }}
+            editingProduct={editingProduct}
+          />
         );
       case "reports":
         return <ReportPage />;

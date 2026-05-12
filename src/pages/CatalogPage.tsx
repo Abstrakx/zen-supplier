@@ -3,212 +3,466 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   PackageSearch,
   Plus,
-  Trash2,
   TrendingUp,
   TrendingDown,
   Search,
+  Package,
+  ChevronRight,
+  Layers,
+  Tag,
+  Printer,
 } from "lucide-react";
-import type { Product, NavPage } from "../types";
+import type { Product, Supplier, NavPage } from "../types";
 
 interface CatalogPageProps {
   onNavigate: (page: NavPage) => void;
+  onViewProduct: (productId: string) => void;
 }
 
-export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate }) => {
+export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProduct }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [printMode, setPrintMode] = useState<"internal" | "dapur" | null>(null);
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
-  const loadProducts = async () => {
+  useEffect(() => {
+    const handleAfterPrint = () => setPrintMode(null);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, []);
+
+  const loadData = async () => {
     try {
-      const data = await invoke<Product[]>("get_products");
-      setProducts(data);
+      const [prods, supps] = await Promise.all([
+        invoke<Product[]>("get_products"),
+        invoke<Supplier[]>("get_suppliers"),
+      ]);
+      setProducts(prods);
+      setSuppliers(supps);
     } catch (e) {
       console.error(e);
     }
   };
 
-  const deleteProduct = async (p: Product) => {
-    if (!confirm(`Hapus produk "${p.name}"?`)) return;
-    try {
-      await invoke("delete_product", { productId: p.id });
-      loadProducts();
-    } catch (e) {
-      alert(String(e));
-    }
-  };
+  const getSupplier = (id: string | null) => suppliers.find((s) => s.id === id);
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = products.filter((p) => {
+    const l = search.toLowerCase();
+    const matchSearch =
+      p.name.toLowerCase().includes(l) ||
+      (p.neto && p.neto.toLowerCase().includes(l)) ||
+      (p.base_unit && p.base_unit.toLowerCase().includes(l)) ||
+      (p.category && p.category.toLowerCase().includes(l));
+
+    const isOps = p.item_type === "operational";
+    const matchType = filterType === "all" || (isOps ? "operational" : (p.item_type || "dapur")) === filterType;
+
+    return matchSearch && matchType;
+  });
+
+  const dapurCount = products.filter((p) => (p.item_type || "dapur") === "dapur").length;
+  const opsCount = products.filter((p) => (p.item_type || "dapur") === "operational").length;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
-      {/* Header */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-xl border border-purple-100 shadow-sm">
-            <PackageSearch size={20} className="text-purple-600" />
-          </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
-              Katalog Master Produk
-            </h2>
-            <p className="text-xs text-slate-500 font-medium tracking-wide">
-              Total {products.length} produk terdaftar dalam sistem
-            </p>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans relative">
+      {/* Screen View */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden no-print">
+        {/* Header */}
+        <div className="px-8 py-6 border-b border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-linear-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-lg shadow-purple-500/20">
+                <PackageSearch size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                  Katalog Master Produk
+                </h2>
+                <p className="text-xs text-slate-500 font-medium tracking-wide">
+                  {products.length} produk terdaftar · {dapurCount} dapur · {opsCount} operasional
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setPrintMode("internal");
+                  setTimeout(() => window.print(), 100);
+                }}
+                className="bg-slate-800 hover:bg-black text-white px-5 py-2.5 rounded-xl text-[10px] font-black shadow-lg shadow-slate-500/20 transition-all flex items-center gap-2 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Printer size={14} /> Print Internal
+              </button>
+              <button
+                onClick={() => {
+                  setPrintMode("dapur");
+                  setTimeout(() => window.print(), 100);
+                }}
+                className="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-[10px] font-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Printer size={14} /> Print Dapur
+              </button>
+              <button
+                onClick={() => onNavigate("product-registration")}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Plus size={16} /> TAMBAH PRODUK
+              </button>
+            </div>
           </div>
         </div>
-        <button
-          onClick={() => onNavigate("product-registration")}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 uppercase tracking-widest"
-        >
-          <Plus size={16} /> TAMBAH PRODUK
-        </button>
-      </div>
 
-      {/* Toolbar */}
-      <div className="px-8 py-4 bg-white/50 border-b border-slate-200 flex items-center justify-between">
-        <div className="relative w-full max-w-md group">
-          <Search
-            size={16}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
-          />
-          <input
-            className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-500 font-bold text-slate-700 text-sm shadow-sm transition-all"
-            placeholder="Cari nama produk..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* Toolbar */}
+        <div className="px-8 py-4 bg-white/60 backdrop-blur-sm border-b border-slate-200 flex items-center gap-4">
+          <div className="relative flex-1 max-w-md group">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+            />
+            <input
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-2xl outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 font-bold text-slate-700 text-sm shadow-sm transition-all"
+              placeholder="Cari produk, kategori, satuan..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+            {[
+              { key: "all", label: "Semua" },
+              { key: "dapur", label: "Dapur" },
+              { key: "operational", label: "Ops" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setFilterType(tab.key)}
+                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filterType === tab.key
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-400 hover:text-slate-600"
+                  }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Nama Produk
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Satuan
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Kategori
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Konversi
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                    Harga Beli
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                    Harga Jual
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">
-                    Margin
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    Opsi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map((p) => {
-                  const margin =
-                    p.latest_buy_price && p.latest_sell_price
-                      ? p.latest_sell_price - p.latest_buy_price
-                      : null;
-                  return (
-                    <tr
-                      key={p.id}
-                      className="hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        {p.name}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-blue-600 text-[11px] uppercase tracking-wider">
-                        {p.base_unit}
-                      </td>
-                      <td className="px-6 py-4 text-xs font-black text-slate-400 uppercase">
-                        {p.category || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-[10px] font-bold text-slate-500 italic">
-                        {p.units
-                          .filter((u) => !u.is_base_unit)
-                          .map(
-                            (u) => `${u.unit_name} (${u.conversion_to_base})`,
-                          )
-                          .join(", ") || "-"}
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-600 text-sm">
-                        {p.latest_buy_price
-                          ? `Rp ${p.latest_buy_price.toLocaleString("id-ID")}`
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-slate-600 text-sm">
-                        {p.latest_sell_price
-                          ? `Rp ${p.latest_sell_price.toLocaleString("id-ID")}`
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {margin !== null ? (
-                          <div
-                            className={`flex flex-col items-end font-black text-[11px] ${margin >= 0 ? "text-emerald-600" : "text-red-600"}`}
-                          >
+        {/* Product Cards Grid */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="p-5 bg-slate-100 rounded-3xl mb-5">
+                <Package size={40} className="text-slate-300" />
+              </div>
+              <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-2">
+                {products.length === 0
+                  ? "Katalog Masih Kosong"
+                  : "Produk Tidak Ditemukan"}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium">
+                {products.length === 0
+                  ? "Tambahkan produk pertama Anda untuk memulai."
+                  : "Coba ubah kata kunci pencarian Anda."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map((p) => {
+                const margin =
+                  p.latest_buy_price && p.latest_sell_price
+                    ? p.latest_sell_price - p.latest_buy_price
+                    : null;
+                const marginPercent =
+                  margin !== null && p.latest_buy_price
+                    ? (margin / p.latest_buy_price) * 100
+                    : null;
+                const supplier = getSupplier(p.supplier_id);
+                const derivedUnits = p.units.filter((u) => !u.is_base_unit);
+
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => onViewProduct(p.id)}
+                    className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 overflow-hidden"
+                  >
+                    {/* Card Header */}
+                    <div className="px-5 pt-5 pb-3">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-black text-slate-800 text-sm truncate leading-tight">
+                            {p.name}
+                            {p.neto && (
+                              <span className="text-blue-500 font-bold ml-1">@{p.neto}</span>
+                            )}
+                          </h3>
+                          {supplier && (
+                            <p className="text-[10px] font-bold text-slate-400 truncate mt-0.5">
+                              {supplier.name}
+                              {supplier.is_internal ? (
+                                <span className="ml-1.5 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase">
+                                  Internal
+                                </span>
+                              ) : (
+                                <span className="ml-1.5 text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase">
+                                  Eksternal
+                                </span>
+                              )}
+                            </p>
+                          )}
+                        </div>
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-blue-500 transition-colors shrink-0 mt-0.5"
+                        />
+                      </div>
+
+                      {/* Tags */}
+                      <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[9px] font-black uppercase tracking-wider">
+                          {p.base_unit}
+                        </span>
+                        {p.category && (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <Tag size={8} /> {p.category}
+                          </span>
+                        )}
+                        {(p.item_type || "dapur") === "operational" && (
+                          <span className="px-2 py-0.5 bg-orange-50 text-orange-600 rounded-md text-[9px] font-black uppercase tracking-wider">
+                            OPS
+                          </span>
+                        )}
+                        {derivedUnits.length > 0 && (
+                          <span className="px-2 py-0.5 bg-violet-50 text-violet-500 rounded-md text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <Layers size={8} /> {derivedUnits.length} satuan
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Price Section */}
+                    <div className="px-5 pb-4">
+                      <div className="flex items-stretch gap-2">
+                        {/* Buy Price */}
+                        <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Beli
+                          </p>
+                          <p className="font-black text-slate-700 text-xs">
+                            {p.latest_buy_price
+                              ? `Rp ${p.latest_buy_price.toLocaleString("id-ID")}`
+                              : "—"}
+                          </p>
+                        </div>
+
+                        {/* Sell Price */}
+                        <div className="flex-1 bg-slate-50 rounded-xl p-3">
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Jual
+                          </p>
+                          <p className="font-black text-slate-700 text-xs">
+                            {p.latest_sell_price
+                              ? `Rp ${p.latest_sell_price.toLocaleString("id-ID")}`
+                              : "—"}
+                          </p>
+                        </div>
+
+                        {/* Margin */}
+                        <div
+                          className={`flex-1 rounded-xl p-3 ${margin === null
+                            ? "bg-slate-50"
+                            : margin >= 0
+                              ? "bg-emerald-50"
+                              : "bg-red-50"
+                            }`}
+                        >
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                            Margin
+                          </p>
+                          {margin !== null ? (
                             <div className="flex items-center gap-1">
                               {margin >= 0 ? (
-                                <TrendingUp size={10} />
+                                <TrendingUp size={10} className="text-emerald-600" />
                               ) : (
-                                <TrendingDown size={10} />
+                                <TrendingDown size={10} className="text-red-600" />
                               )}
-                              Rp {margin.toLocaleString("id-ID")}
+                              <span
+                                className={`font-black text-xs ${margin >= 0 ? "text-emerald-700" : "text-red-700"
+                                  }`}
+                              >
+                                {marginPercent !== null ? `${marginPercent.toFixed(1)}%` : "—"}
+                              </span>
                             </div>
-                            <span className="text-[9px] opacity-70">
-                              {(
-                                (margin / (p.latest_buy_price || 1)) *
-                                100
-                              ).toFixed(1)}
-                              %
+                          ) : (
+                            <p className="font-black text-slate-400 text-xs">—</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Conversion Footer */}
+                    {derivedUnits.length > 0 && (
+                      <div className="px-5 pb-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {derivedUnits.map((u) => (
+                            <span
+                              key={u.id}
+                              className="text-[9px] font-bold text-slate-500 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg"
+                            >
+                              1 {u.unit_name} = {u.conversion_to_base} {p.base_unit}
                             </span>
-                          </div>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => deleteProduct(p)}
-                          className="p-2 hover:bg-red-50 rounded-lg text-slate-300 hover:text-red-500 transition-colors"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="text-center py-24 text-slate-400 font-medium italic"
-                    >
-                      {products.length === 0
-                        ? "Katalog produk masih kosong. Tambahkan produk pertama Anda."
-                        : "Pencarian tidak menemukan produk yang cocok."}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Print Templates */}
+      {printMode && (
+        <div className="hidden print:block fixed inset-0 bg-white z-9999 p-8 text-black font-sans">
+          {/* Print Header */}
+          <div className="text-center mb-8 border-b-2 border-black pb-6">
+            <h1 className="text-3xl font-black tracking-tighter">ZEN SUPPLIER</h1>
+            <p className="text-[10px] uppercase font-bold tracking-[0.3em] text-gray-500 mt-1">
+              {printMode === "internal" ? "DAFTAR HARGA INTERNAL (KONFIDENSIAL)" : "DAFTAR HARGA KATALOG"}
+            </p>
+            <div className="flex justify-between items-end mt-6 text-[10px] font-bold">
+              <p>TANGGAL CETAK: {new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+              <p>FILTER: {filterType.toUpperCase()} {search ? `| CARI: "${search}"` : ""}</p>
+            </div>
+          </div>
+
+          <table className="w-full border-collapse border border-black text-[10px]">
+            <thead>
+              <tr className="bg-gray-100 uppercase font-black">
+                <th className="border border-black p-2 text-center w-8">#</th>
+                <th className="border border-black p-2 text-left">PRODUK</th>
+                <th className="border border-black p-2 text-center w-16">SATUAN</th>
+                {printMode === "internal" && (
+                  <>
+                    <th className="border border-black p-2 text-left w-32">SUPPLIER</th>
+                    <th className="border border-black p-2 text-right w-20">H. BELI</th>
+                  </>
+                )}
+                <th className="border border-black p-2 text-right w-20">H. JUAL</th>
+                {printMode === "internal" && (
+                  <>
+                    <th className="border border-black p-2 text-right w-16">MARGIN</th>
+                    <th className="border border-black p-2 text-left">CATATAN REVISI ✏️</th>
+                  </>
+                )}
+                {printMode === "dapur" && (
+                  <th className="border border-black p-2 text-left">SATUAN LAINNYA</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p, idx) => {
+                const supplier = getSupplier(p.supplier_id);
+                const margin = (p.latest_buy_price && p.latest_sell_price) ? (p.latest_sell_price - p.latest_buy_price) : null;
+                const marginPercent = (margin !== null && p.latest_buy_price) ? (margin / p.latest_buy_price) * 100 : null;
+
+                return (
+                  <React.Fragment key={p.id}>
+                    <tr className="border-b border-black">
+                      <td className="border border-black p-2 text-center">{idx + 1}</td>
+                      <td className="border border-black p-2 font-bold">
+                        {p.name} {p.neto && <span className="opacity-50 text-[8px]">@{p.neto}</span>}
+                        {printMode === "internal" && (
+                          <div className="text-[8px] opacity-40 uppercase tracking-tighter mt-0.5">
+                            ID: {p.id.slice(0, 8)} | CAT: {p.category || "-"} | TYPE: {p.item_type || "dapur"}
+                          </div>
+                        )}
+                      </td>
+                      <td className="border border-black p-2 text-center font-bold">{p.base_unit}</td>
+                      {printMode === "internal" && (
+                        <>
+                          <td className="border border-black p-2 italic opacity-70">
+                            {supplier?.name || "-"}
+                          </td>
+                          <td className="border border-black p-2 text-right">
+                            {p.latest_buy_price?.toLocaleString("id-ID") || "-"}
+                          </td>
+                        </>
+                      )}
+                      <td className="border border-black p-2 text-right font-black">
+                        {p.latest_sell_price?.toLocaleString("id-ID") || "-"}
+                      </td>
+                      {printMode === "internal" && (
+                        <>
+                          <td className={`border border-black p-2 text-right font-bold ${margin && margin < 0 ? 'text-red-600' : ''}`}>
+                            {marginPercent !== null ? `${marginPercent.toFixed(1)}%` : "-"}
+                          </td>
+                          <td className="border border-black p-2 w-32"></td>
+                        </>
+                      )}
+                      {printMode === "dapur" && (
+                        <td className="border border-black p-2">
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            {p.units.filter(u => !u.is_base_unit).map(u => (
+                              <div key={u.id} className="whitespace-nowrap">
+                                <span className="font-bold">{u.unit_name}</span>:
+                                <span className="ml-1">Rp {u.latest_sell_price?.toLocaleString("id-ID") || (p.latest_sell_price ? (p.latest_sell_price * u.conversion_to_base).toLocaleString("id-ID") : "-")}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                    {/* Unit Breakdown for Internal Print */}
+                    {printMode === "internal" && p.units.filter(u => !u.is_base_unit).map(u => (
+                      <tr key={u.id} className="bg-gray-50/50 text-[8px]">
+                        <td className="border border-black"></td>
+                        <td className="border border-black p-1 pl-4 italic" colSpan={2}>
+                          ↳ Satuan: {u.unit_name} (Konversi: {u.conversion_to_base} {p.base_unit})
+                        </td>
+                        <td className="border border-black"></td>
+                        <td className="border border-black p-1 text-right opacity-60">
+                          {u.latest_buy_price?.toLocaleString("id-ID") || "-"}
+                        </td>
+                        <td className="border border-black p-1 text-right font-bold">
+                          {u.latest_sell_price?.toLocaleString("id-ID") || "-"}
+                        </td>
+                        <td className="border border-black"></td>
+                        <td className="border border-black"></td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {printMode === "internal" && (
+            <div className="mt-8 text-[8px] text-gray-400 italic">
+              * Dokumen ini rahasia. Digunakan khusus untuk tim operasional supplier. Kolom revisi digunakan untuk pencatatan perubahan harga manual sebelum diinput ke sistem.
+            </div>
+          )}
+
+          <div className="mt-12 flex justify-end gap-20 text-[10px] font-black uppercase">
+            <div className="text-center">
+              <p className="mb-16 italic opacity-30">DICETAK OLEH,</p>
+              <div className="w-32 h-px bg-black mx-auto"></div>
+              <p className="mt-2">TIM ADMIN</p>
+            </div>
+            <div className="text-center">
+              <p className="mb-16 italic opacity-30">DISETUJUI OLEH,</p>
+              <div className="w-32 h-px bg-black mx-auto"></div>
+              <p className="mt-2">MANAGER OPERASIONAL</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

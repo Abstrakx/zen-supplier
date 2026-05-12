@@ -52,9 +52,11 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
         CREATE TABLE IF NOT EXISTS products (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            neto TEXT,
             base_unit TEXT NOT NULL,
             category TEXT,
             supplier_id TEXT,
+            item_type TEXT DEFAULT 'dapur',
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
@@ -217,6 +219,12 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
             FOREIGN KEY (daily_order_id) REFERENCES daily_orders(id) ON DELETE CASCADE
         );"
     );
+
+    // Migration for neto column in products
+    let _ = conn.execute("ALTER TABLE products ADD COLUMN neto TEXT", []);
+
+    // Clean up item_type spelling
+    let _ = conn.execute("UPDATE products SET item_type = 'operational' WHERE item_type = 'operasional'", []);
 
     Ok(conn)
 }

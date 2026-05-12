@@ -16,13 +16,14 @@ import {
   UserPlus,
   Check,
 } from "lucide-react";
-import type { Supplier } from "../types";
+import type { Supplier, Product } from "../types";
 import { SupplierModal } from "../components/SupplierModal";
 import { CurrencyInput } from "../components/CurrencyInput";
 import Swal from "sweetalert2";
 
 interface ProductRegistrationPageProps {
   onBack: () => void;
+  editingProduct?: Product | null;
 }
 
 interface AdditionalUnit {
@@ -35,7 +36,7 @@ interface AdditionalUnit {
 
 export const ProductRegistrationPage: React.FC<
   ProductRegistrationPageProps
-> = ({ onBack }) => {
+> = ({ onBack, editingProduct }) => {
   const [loading, setLoading] = useState(false);
 
   // Form State
@@ -78,6 +79,30 @@ export const ProductRegistrationPage: React.FC<
     "KARUNG",
     "IKAT",
   ];
+
+  useEffect(() => {
+    if (editingProduct) {
+      setName(editingProduct.name);
+      setNeto(editingProduct.neto || "");
+      setBaseUnit(editingProduct.base_unit);
+      setCategory(editingProduct.category || "");
+      setSupplierId(editingProduct.supplier_id);
+      setItemType(editingProduct.item_type as any || "dapur");
+      setBuyPrice(editingProduct.latest_buy_price || "");
+      setSellPrice(editingProduct.latest_sell_price || "");
+      
+      const units: AdditionalUnit[] = (editingProduct.units || [])
+        .filter(u => !u.is_base_unit)
+        .map(u => ({
+          unit_name: u.unit_name,
+          conversion: u.conversion_to_base,
+          buy_price: "", // We don't easily have latest price per unit here, but can derive
+          sell_price: "",
+          is_custom_price: false
+        }));
+      setAdditionalUnits(units);
+    }
+  }, [editingProduct]);
 
   useEffect(() => {
     loadCategories();
@@ -167,9 +192,9 @@ export const ProductRegistrationPage: React.FC<
 
     setLoading(true);
     try {
-      const finalName = neto.trim() ? `${name.trim()} ${neto.trim()}` : name.trim();
       const payload = {
-        name: finalName,
+        name: name.trim(),
+        neto: neto.trim() ? neto.trim() : null,
         base_unit: baseUnit.trim().toUpperCase(),
         category: category.trim() ? category.trim().toUpperCase() : null,
         supplier_id: supplierId,
@@ -185,7 +210,11 @@ export const ProductRegistrationPage: React.FC<
         sell_price: sellPrice === "" ? null : Number(sellPrice),
       };
 
-      await invoke("create_product", { payload });
+      if (editingProduct) {
+        await invoke("update_product", { productId: editingProduct.id, payload });
+      } else {
+        await invoke("create_product", { payload });
+      }
 
       Swal.fire({
         title: "Berhasil!",
@@ -277,10 +306,10 @@ export const ProductRegistrationPage: React.FC<
             </div>
             <div>
               <h2 className="text-xl font-extrabold text-slate-800 tracking-tight">
-                Registrasi Produk Baru
+                {editingProduct ? "Edit Master Produk" : "Registrasi Produk Baru"}
               </h2>
               <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-[0.2em] opacity-80">
-                Lengkapi data master produk
+                {editingProduct ? `Update data ${editingProduct.name}` : "Lengkapi data master produk"}
               </p>
             </div>
           </div>

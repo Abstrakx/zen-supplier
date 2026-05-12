@@ -63,6 +63,7 @@ pub struct AggregateItem {
     pub unit: String,
     pub total_quantity: f64,
     pub category: String,
+    pub is_external: bool,
     pub distributions: Vec<KitchenDistribution>,
 }
 
@@ -77,6 +78,7 @@ pub struct KitchenDistribution {
 pub struct CreateDailyOrderPayload {
     pub order_date: String,
     pub kitchen_id: String,
+    pub custom_seq: Option<i64>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -135,7 +137,7 @@ fn month_to_roman(month: u32) -> &'static str {
     }
 }
 
-fn generate_po_number(conn: &rusqlite::Connection, order_date: &str, kitchen_code: &str) -> Result<String, String> {
+fn generate_po_number(conn: &rusqlite::Connection, order_date: &str, kitchen_code: &str, custom_seq: Option<i64>) -> Result<String, String> {
     // Parse year and month from order_date (YYYY-MM-DD)
     let parts: Vec<&str> = order_date.split('-').collect();
     if parts.len() < 2 {
@@ -145,7 +147,36 @@ fn generate_po_number(conn: &rusqlite::Connection, order_date: &str, kitchen_cod
     let month: u32 = parts[1].parse().unwrap_or(1);
     let year_month = format!("{}-{:02}", year, month);
 
-    // Count existing POs in the same month
+    let seq = match custom_seq {
+        Some(s) => s,
+        None => {
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM daily_orders WHERE strftime('%Y-%m', order_date) = ?1",
+                    [&year_month],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            count + 1
+        }
+    };
+
+    let roman = month_to_roman(month);
+
+    Ok(format!("{:02}/ZS-{}/{}/{}", seq, kitchen_code, roman, year))
+}
+
+#[tauri::command]
+pub fn get_next_po_sequence(state: State<'_, DbState>, order_date: String) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let parts: Vec<&str> = order_date.split('-').collect();
+    if parts.len() < 2 {
+        return Err("Invalid date format".to_string());
+    }
+    let year = parts[0];
+    let month: u32 = parts[1].parse().unwrap_or(1);
+    let year_month = format!("{}-{:02}", year, month);
+
     let count: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM daily_orders WHERE strftime('%Y-%m', order_date) = ?1",
@@ -154,10 +185,7 @@ fn generate_po_number(conn: &rusqlite::Connection, order_date: &str, kitchen_cod
         )
         .unwrap_or(0);
 
-    let seq = count + 1;
-    let roman = month_to_roman(month);
-
-    Ok(format!("{:02}/INTERNAL-{}/{}/{}", seq, kitchen_code, roman, year))
+    Ok(count + 1)
 }
 
 // ═══ COMMANDS ═══
@@ -177,7 +205,7 @@ pub fn create_daily_order(state: State<'_, DbState>, payload: CreateDailyOrderPa
         .map_err(|e| format!("Kitchen not found: {}", e))?;
 
     // Generate PO number
-    let po_number = generate_po_number(&conn, &payload.order_date, &kitchen_code)?;
+    let po_number = generate_po_number(&conn, &payload.order_date, &kitchen_code, payload.custom_seq)?;
 
     // Auto-generate title: "PO MBG KITCHEN_NAME / DATE"
     let title = format!("PO MBG {} / {}", kitchen_name, payload.order_date);
@@ -504,13 +532,13 @@ pub fn forward_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Re
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
     // 1. Get PO details
-    let (order_date, kitchen_id, kitchen_code): (String, String, String) = tx.query_row(
-        "SELECT d.order_date, d.kitchen_id, k.code 
+    let (order_date, kitchen_id, kitchen_code, po_number): (String, String, String, String) = tx.query_row(
+        "SELECT d.order_date, d.kitchen_id, k.code, d.po_number 
          FROM daily_orders d 
          JOIN kitchens k ON d.kitchen_id = k.id 
          WHERE d.id = ?1",
         [&order_id],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get::<_, Option<String>>(3)?.unwrap_or_default())),
     ).map_err(|e| e.to_string())?;
 
     // 2. Update PO status to 'ordered'
@@ -521,7 +549,7 @@ pub fn forward_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Re
     .map_err(|e| e.to_string())?;
 
     // 3. Generate Delivery Note (SJ)
-    let count: i64 = tx.query_row("SELECT COUNT(*) FROM delivery_notes", [], |r| r.get(0)).map_err(|e| e.to_string())?;
+    let po_seq = po_number.split('/').next().unwrap_or("01");
     
     // Helper for Roman months
     let month_roman = |m: u32| -> &'static str {
@@ -531,7 +559,7 @@ pub fn forward_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Re
     let parts: Vec<&str> = order_date.split('-').collect();
     let m = parts.get(1).unwrap_or(&"01").parse::<u32>().unwrap_or(1);
     let y = parts.first().unwrap_or(&"2026");
-    let delivery_number = format!("{:02}/ZS-{}/{}/{}", count + 1, kitchen_code, month_roman(m), y);
+    let delivery_number = format!("{}/ZS-{}/{}/{}", po_seq, kitchen_code, month_roman(m), y);
     
     let sj_id = Uuid::new_v4().to_string();
 
@@ -541,12 +569,13 @@ pub fn forward_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Re
         rusqlite::params![sj_id, order_id, kitchen_id, delivery_number, order_date],
     ).map_err(|e| e.to_string())?;
 
-    // 4. Copy items to delivery_note_items
+    // 4. Copy items to delivery_note_items (Only Internal Suppliers)
     {
         let mut stmt = tx.prepare(
-            "SELECT id, product_name, quantity, unit 
-             FROM order_items 
-             WHERE daily_order_id = ?1 AND category IN ('internal', 'operational')"
+            "SELECT oi.id, oi.product_name, oi.quantity, oi.unit 
+             FROM order_items oi
+             LEFT JOIN suppliers s ON oi.supplier_id = s.id
+             WHERE oi.daily_order_id = ?1 AND (s.is_internal = 1 OR (oi.supplier_id IS NULL AND oi.category = 'internal'))"
         ).map_err(|e| e.to_string())?;
 
         let items = stmt.query_map([&order_id], |r| {
@@ -586,7 +615,13 @@ pub fn get_aggregate_shopping_list(state: State<'_, DbState>, order_id: String) 
 
     // Get distinct products
     let mut stmt = conn.prepare(
-        "SELECT DISTINCT product_name, unit, category FROM order_items WHERE daily_order_id = ?1 ORDER BY category, product_name"
+        "SELECT oi.product_name, oi.unit, oi.category, 
+                MAX(CASE WHEN s.is_internal = 0 THEN 1 ELSE 0 END) as is_external
+         FROM order_items oi
+         LEFT JOIN suppliers s ON oi.supplier_id = s.id
+         WHERE oi.daily_order_id = ?1 
+         GROUP BY oi.product_name, oi.unit, oi.category
+         ORDER BY oi.category, oi.product_name"
     ).map_err(|e| e.to_string())?;
 
     let product_rows = stmt.query_map([&order_id], |row| {
@@ -594,13 +629,14 @@ pub fn get_aggregate_shopping_list(state: State<'_, DbState>, order_id: String) 
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
             row.get::<_, String>(2)?,
+            row.get::<_, i32>(3)? == 1,
         ))
     }).map_err(|e| e.to_string())?;
 
     let mut aggregates: Vec<AggregateItem> = Vec::new();
 
     for pr in product_rows {
-        if let Ok((pname, punit, pcat)) = pr {
+        if let Ok((pname, punit, pcat, is_ext)) = pr {
             let mut dist_stmt = conn.prepare(
                 "SELECT oi.kitchen_id, k.name, SUM(oi.quantity)
                  FROM order_items oi
@@ -631,6 +667,7 @@ pub fn get_aggregate_shopping_list(state: State<'_, DbState>, order_id: String) 
                 unit: punit,
                 total_quantity: total,
                 category: pcat,
+                is_external: is_ext,
                 distributions,
             });
         }
@@ -644,11 +681,15 @@ pub fn get_aggregate_by_date(state: State<'_, DbState>, order_date: String) -> R
     let conn = state.0.lock().map_err(|e| e.to_string())?;
 
     // 1. Get distinct products for that date across all POs
+    // Join with suppliers to determine if ANY of the products for this date are from an external supplier
     let mut stmt = conn.prepare(
-        "SELECT DISTINCT oi.product_name, oi.unit, oi.category 
+        "SELECT oi.product_name, oi.unit, oi.category, 
+                MAX(CASE WHEN s.is_internal = 0 THEN 1 ELSE 0 END) as is_external
          FROM order_items oi
          JOIN daily_orders do ON oi.daily_order_id = do.id
+         LEFT JOIN suppliers s ON oi.supplier_id = s.id
          WHERE do.order_date = ?1 
+         GROUP BY oi.product_name, oi.unit, oi.category
          ORDER BY oi.category, oi.product_name"
     ).map_err(|e| e.to_string())?;
 
@@ -657,13 +698,14 @@ pub fn get_aggregate_by_date(state: State<'_, DbState>, order_date: String) -> R
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
             row.get::<_, String>(2)?,
+            row.get::<_, i32>(3)? == 1, // is_external
         ))
     }).map_err(|e| e.to_string())?;
 
     let mut aggregates: Vec<AggregateItem> = Vec::new();
 
     for pr in product_rows {
-        if let Ok((pname, punit, pcat)) = pr {
+        if let Ok((pname, punit, pcat, is_ext)) = pr {
             // 2. For each product, get distributions per kitchen
             let mut dist_stmt = conn.prepare(
                 "SELECT oi.kitchen_id, k.name, SUM(oi.quantity)
@@ -696,6 +738,7 @@ pub fn get_aggregate_by_date(state: State<'_, DbState>, order_date: String) -> R
                 unit: punit,
                 total_quantity: total,
                 category: pcat,
+                is_external: is_ext,
                 distributions,
             });
         }
@@ -732,12 +775,13 @@ pub fn sync_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Resul
     // 2. Delete old items
     tx.execute("DELETE FROM delivery_note_items WHERE delivery_note_id = ?1", [&sj_id]).map_err(|e| e.to_string())?;
 
-    // 3. Re-copy items
+    // 3. Re-copy items (Only Internal Suppliers)
     {
         let mut stmt = tx.prepare(
-            "SELECT id, product_name, quantity, unit 
-             FROM order_items 
-             WHERE daily_order_id = ?1 AND category IN ('internal', 'operational')"
+            "SELECT oi.id, oi.product_name, oi.quantity, oi.unit 
+             FROM order_items oi
+             LEFT JOIN suppliers s ON oi.supplier_id = s.id
+             WHERE oi.daily_order_id = ?1 AND (s.is_internal = 1 OR (oi.supplier_id IS NULL AND oi.category = 'internal'))"
         ).map_err(|e| e.to_string())?;
 
         let items = stmt.query_map([&order_id], |r| {
