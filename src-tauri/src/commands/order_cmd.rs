@@ -268,7 +268,7 @@ pub fn get_daily_orders(state: State<'_, DbState>, date_from: Option<String>, da
 
     let orders = match (&date_from, &date_to) {
         (Some(from), Some(to)) => {
-            let sql = format!("{} WHERE d.order_date >= ?1 AND d.order_date <= ?2 ORDER BY CASE WHEN d.status = 'done' THEN 1 ELSE 0 END, d.order_date DESC", base_query);
+            let sql = format!("{} WHERE d.order_date >= ?1 AND d.order_date <= ?2 ORDER BY CASE WHEN d.status = 'done' THEN 1 ELSE 0 END, d.created_at DESC", base_query);
             let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
             let rows = stmt.query_map(rusqlite::params![from, to], map_row).map_err(|e| e.to_string())?;
             let mut items = Vec::new();
@@ -276,7 +276,7 @@ pub fn get_daily_orders(state: State<'_, DbState>, date_from: Option<String>, da
             items
         },
         _ => {
-            let sql = format!("{} ORDER BY CASE WHEN d.status = 'done' THEN 1 ELSE 0 END, d.order_date DESC LIMIT 50", base_query);
+            let sql = format!("{} ORDER BY CASE WHEN d.status = 'done' THEN 1 ELSE 0 END, d.created_at DESC LIMIT 50", base_query);
             let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
             let rows = stmt.query_map([], map_row).map_err(|e| e.to_string())?;
             let mut items = Vec::new();
@@ -486,7 +486,21 @@ pub fn create_po_section(state: State<'_, DbState>, payload: CreatePoSectionPayl
         )
         .unwrap_or(0);
 
-    let section_name = payload.section_name.unwrap_or_else(|| "Rapelan".to_string());
+    let section_name = payload.section_name.unwrap_or_else(|| {
+        let rapelan_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM po_sections WHERE daily_order_id = ?1 AND (section_name = 'Rapelan' OR section_name LIKE 'Rapelan (%)')",
+                [&payload.daily_order_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        if rapelan_count == 0 {
+            "Rapelan".to_string()
+        } else {
+            format!("Rapelan ({})", rapelan_count)
+        }
+    });
 
     conn.execute(
         "INSERT INTO po_sections (id, daily_order_id, section_name, sort_order) VALUES (?1, ?2, ?3, ?4)",

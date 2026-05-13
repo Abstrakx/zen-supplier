@@ -215,7 +215,9 @@ export const InvoicePage: React.FC = () => {
                     <div className="flex items-center gap-5">
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-inner transition-all duration-300 ${inv.invoice_type === 'operational'
                         ? 'bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-600 group-hover:text-white'
-                        : 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
+                        : inv.invoice_type === 'rapelan'
+                          ? 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
+                          : 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
                         }`}>
                         <Receipt size={24} strokeWidth={2.5} />
                       </div>
@@ -226,9 +228,9 @@ export const InvoicePage: React.FC = () => {
                           </h4>
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-[10px] font-bold uppercase tracking-widest">
-                          <span className={`${inv.invoice_type === 'operational' ? 'text-purple-500' : 'text-amber-600'
+                          <span className={`${inv.invoice_type === 'operational' ? 'text-purple-500' : inv.invoice_type === 'rapelan' ? 'text-indigo-600' : 'text-amber-600'
                             } bg-slate-50 px-2 py-0.5 rounded border border-slate-100`}>
-                            {inv.invoice_type === 'operational' ? 'OPS' : 'BAHAN DAPUR'}
+                            {inv.invoice_type === 'operational' ? 'OPS' : inv.invoice_type === 'rapelan' ? 'RAPELAN' : 'BAHAN DAPUR'}
                           </span>
                           <span className="text-slate-200">•</span>
                           <span className="text-slate-400 font-medium">{inv.item_count} ITEMS</span>
@@ -298,7 +300,9 @@ export const InvoicePage: React.FC = () => {
                   <div className="mt-6 bg-black text-white inline-block px-6 py-1.5 text-sm font-black uppercase tracking-widest">
                     {selectedInvoice.invoice.invoice_type === "daily"
                       ? "INVOICE HARIAN"
-                      : "INVOICE OPERASIONAL"}
+                      : selectedInvoice.invoice.invoice_type === "rapelan"
+                        ? "INVOICE RAPELAN"
+                        : "INVOICE OPERASIONAL"}
                   </div>
                   <p className="text-sm font-black mt-3">
                     NO: {selectedInvoice.invoice.invoice_number}
@@ -521,7 +525,9 @@ export const InvoicePage: React.FC = () => {
               <p className="text-sm font-bold uppercase">
                 {selectedInvoice.invoice.invoice_type === "daily"
                   ? "INVOICE HARIAN"
-                  : "INVOICE OPERASIONAL"}
+                  : selectedInvoice.invoice.invoice_type === "rapelan"
+                    ? "INVOICE RAPELAN"
+                    : "INVOICE OPERASIONAL"}
               </p>
               <p className="text-sm font-bold">
                 NO: {selectedInvoice.invoice.invoice_number}

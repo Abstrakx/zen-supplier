@@ -157,7 +157,7 @@ export interface Invoice {
   kitchen_id: string;
   kitchen_name: string | null;
   invoice_number: string;
-  invoice_type: 'daily' | 'operational';
+  invoice_type: 'daily' | 'operational' | 'rapelan';
   invoice_date: string;
   total_amount: number;
   status: string;
@@ -249,7 +249,8 @@ export type NavPage =
   | 'product-detail'
   | 'product-registration'
   | 'reports'
-  | 'settings';
+  | 'settings'
+  | 'koneksi';
 
 export interface UnitConversionPayload {
   custom_unit_name: string;

@@ -78,23 +78,24 @@ export const DashboardPage: React.FC<Props> = ({ onNavigate }) => {
   ];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto bg-slate-50 text-slate-900 font-sans">
+    <div className="flex-1 h-full overflow-y-auto bg-slate-50 text-slate-900 font-sans scroll-smooth">
       {/* Header Section */}
-      <div className="px-8 py-10 bg-white border-b border-slate-200 shadow-sm relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3">
-            <Calendar size={12} />
+      <div className="px-8 pt-14 pb-10 bg-white border-b border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="relative z-10 mx-auto">
+          <div className="flex items-center gap-2 text-blue-500 text-[10px] font-black uppercase tracking-widest mb-3 bg-blue-50 w-fit px-3 py-1 rounded-full border border-blue-100">
+            <Calendar size={12} strokeWidth={3} />
             <span>{todayDate}</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight leading-tight">
             Selamat Datang 👋
           </h1>
-          <p className="text-slate-500 mt-1 font-medium">
-            Dashboard ringkasan operasional ZEN SUPPLIER
+          <p className="text-slate-500 mt-2 font-medium text-lg">
+            Dashboard ringkasan operasional <span className="text-blue-600 font-bold">ZEN SUPPLIER</span>
           </p>
         </div>
         {/* Subtle background decoration */}
-        <div className="absolute right-0 top-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl -mr-20 -mt-20 opacity-50"></div>
+        <div className="absolute right-0 top-0 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <div className="absolute left-1/4 bottom-0 w-64 h-64 bg-purple-50/50 rounded-full blur-3xl -ml-20 -mb-20"></div>
       </div>
 
       <div className="flex-1 p-8 space-y-8">

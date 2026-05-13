@@ -9,6 +9,7 @@ import { CatalogPage } from "./pages/CatalogPage";
 import { ProductRegistrationPage } from "./pages/ProductRegistrationPage";
 import { ReportPage } from "./pages/ReportPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ConnectionPage } from "./pages/ConnectionPage";
 import type { NavPage } from "./types";
 import "./index.css";
 
@@ -87,6 +88,8 @@ export default function App() {
         return <ReportPage />;
       case "settings":
         return <SettingsPage />;
+      case "koneksi":
+        return <ConnectionPage />;
       default:
         return <DashboardPage onNavigate={setActiveNav} />;
     }

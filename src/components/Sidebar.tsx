@@ -7,6 +7,7 @@ import {
   PackageSearch,
   BarChart3,
   Settings,
+  Users,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   },
   { id: "invoices", icon: Receipt, label: "Invoice", accent: "amber" },
   { id: "reports", icon: BarChart3, label: "Laporan" },
+  { id: "koneksi", icon: Users, label: "Koneksi", accent: "indigo" },
   { id: "settings", icon: Settings, label: "Pengaturan" },
 ];
 

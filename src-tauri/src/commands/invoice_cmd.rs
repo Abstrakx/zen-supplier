@@ -121,7 +121,7 @@ pub fn generate_invoice(state: State<'_, DbState>, daily_order_id: String, kitch
 pub fn get_invoices(state: State<'_, DbState>, daily_order_id: Option<String>) -> Result<Vec<Invoice>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let base = "SELECT i.id,i.daily_order_id,i.kitchen_id,k.name,i.invoice_number,i.invoice_type,i.invoice_date,i.total_amount,i.status,i.notes,i.created_at,(SELECT COUNT(*) FROM invoice_items WHERE invoice_id=i.id) FROM invoices i LEFT JOIN kitchens k ON i.kitchen_id=k.id";
-    let query = if daily_order_id.is_some() { format!("{} WHERE i.daily_order_id=?1 ORDER BY i.invoice_date DESC", base) } else { format!("{} ORDER BY i.invoice_date DESC LIMIT 50", base) };
+    let query = if daily_order_id.is_some() { format!("{} WHERE i.daily_order_id=?1 ORDER BY i.created_at DESC", base) } else { format!("{} ORDER BY i.created_at DESC LIMIT 50", base) };
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
     let map_row = |row: &rusqlite::Row| -> rusqlite::Result<Invoice> {
         Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)? })
