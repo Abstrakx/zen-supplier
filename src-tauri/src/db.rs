@@ -282,17 +282,23 @@ fn apply_schema(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
         );
         ",
     )?;
-    
+
     // ═══ MIGRATIONS ═══
     // Simple migration to add missing columns to existing tables
     let _ = conn.execute("ALTER TABLE suppliers ADD COLUMN phone TEXT", []);
     let _ = conn.execute("ALTER TABLE suppliers ADD COLUMN address TEXT", []);
     let _ = conn.execute("ALTER TABLE products ADD COLUMN supplier_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE products ADD COLUMN item_type TEXT DEFAULT 'dapur'", []);
+    let _ = conn.execute(
+        "ALTER TABLE products ADD COLUMN item_type TEXT DEFAULT 'dapur'",
+        [],
+    );
     let _ = conn.execute("ALTER TABLE daily_orders ADD COLUMN kitchen_id TEXT", []);
     let _ = conn.execute("ALTER TABLE daily_orders ADD COLUMN po_number TEXT", []);
     let _ = conn.execute("ALTER TABLE order_items ADD COLUMN po_section_id TEXT", []);
-    let _ = conn.execute("ALTER TABLE order_items ADD COLUMN is_new_product INTEGER DEFAULT 0", []);
+    let _ = conn.execute(
+        "ALTER TABLE order_items ADD COLUMN is_new_product INTEGER DEFAULT 0",
+        [],
+    );
     // Create po_sections table if not exists (for existing DBs)
     let _ = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS po_sections (
@@ -302,7 +308,7 @@ fn apply_schema(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
             sort_order INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now')),
             FOREIGN KEY (daily_order_id) REFERENCES daily_orders(id) ON DELETE CASCADE
-        );"
+        );",
     );
 
     // Migration for neto column in products
@@ -315,7 +321,10 @@ fn apply_schema(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
     let _ = conn.execute("ALTER TABLE nota_items ADD COLUMN unit_id TEXT", []);
 
     // Clean up item_type spelling
-    let _ = conn.execute("UPDATE products SET item_type = 'operational' WHERE item_type = 'operasional'", []);
+    let _ = conn.execute(
+        "UPDATE products SET item_type = 'operational' WHERE item_type = 'operasional'",
+        [],
+    );
 
     // Create new tables if they don't exist (for existing DBs)
     let _ = conn.execute_batch(
@@ -382,40 +391,8 @@ fn apply_schema(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
             FOREIGN KEY (unit_id) REFERENCES product_units(id)
         );
-        "
+        ",
     );
-    
-    // Migration to make order_item_id nullable in invoice_items
-    let _ = conn.execute_batch("
-        PRAGMA foreign_keys=OFF;
-        CREATE TABLE IF NOT EXISTS invoice_items_temp (
-            id TEXT PRIMARY KEY,
-            invoice_id TEXT NOT NULL,
-            order_item_id TEXT,
-            product_name TEXT NOT NULL,
-            day_name TEXT,
-            item_date TEXT,
-            quantity REAL NOT NULL,
-            unit TEXT NOT NULL,
-            unit_price REAL NOT NULL,
-            buy_price REAL,
-            subtotal REAL NOT NULL,
-            product_id TEXT,
-            unit_id TEXT,
-            is_manual INTEGER DEFAULT 0,
-            original_price REAL,
-            FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
-            FOREIGN KEY (order_item_id) REFERENCES order_items(id),
-            FOREIGN KEY (product_id) REFERENCES products(id),
-            FOREIGN KEY (unit_id) REFERENCES product_units(id)
-        );
-        INSERT OR IGNORE INTO invoice_items_temp (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id) 
-        SELECT id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id FROM invoice_items;
-        DROP TABLE IF EXISTS invoice_items;
-        ALTER TABLE invoice_items_temp RENAME TO invoice_items;
-        UPDATE invoice_items SET original_price = unit_price WHERE original_price IS NULL;
-        PRAGMA foreign_keys=ON;
-    ")?;
 
     Ok(())
 }
@@ -429,12 +406,21 @@ pub fn reset_database(state: tauri::State<'_, crate::commands::DbState>) -> Resu
 
     let tables = [
         "pending_price_changes",
-        "nota_items", "nota_sections", "nota_breakdown", "stores",
-        "invoice_items", "invoices",
-        "delivery_note_items", "delivery_notes",
-        "order_items", "daily_orders",
-        "price_history", "product_units", "products",
-        "kitchens", "suppliers"
+        "nota_items",
+        "nota_sections",
+        "nota_breakdown",
+        "stores",
+        "invoice_items",
+        "invoices",
+        "delivery_note_items",
+        "delivery_notes",
+        "order_items",
+        "daily_orders",
+        "price_history",
+        "product_units",
+        "products",
+        "kitchens",
+        "suppliers",
     ];
 
     for table in tables {

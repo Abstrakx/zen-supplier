@@ -38,10 +38,24 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
   const [kitchens, setKitchens] = useState<Kitchen[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isStoreDropdownOpen, setIsStoreDropdownOpen] = useState(false);
+  const [sectionToPrint, setSectionToPrint] = useState<string | null>(null);
 
   useEffect(() => {
     loadAll();
   }, [notaId]);
+
+  const selectedStore = useMemo(() => {
+    return stores.find(s => s.id === detail?.nota.store_id);
+  }, [stores, detail?.nota.store_id]);
+
+  const printSingleSection = (sectionId: string) => {
+    setSectionToPrint(sectionId);
+    setTimeout(() => {
+      window.print();
+      setSectionToPrint(null);
+    }, 100);
+  };
 
   const loadAll = async () => {
     setLoading(true);
@@ -157,20 +171,58 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
             <div className="flex items-center gap-3 mt-0.5">
               <div className="flex items-center gap-1 group">
                 <Store size={10} className="text-slate-400 group-hover:text-violet-500 transition-colors" />
-                <select
-                  className="text-[10px] font-bold text-slate-500 bg-transparent outline-none cursor-pointer hover:text-violet-600 transition-colors uppercase tracking-widest appearance-none"
-                  value={detail.nota.store_id || ""}
-                  onChange={(e) => {
-                    const s = stores.find(st => st.id === e.target.value);
-                    updateNota({ store_id: e.target.value || null, store_name: s?.name || null });
-                  }}
-                  disabled={detail.nota.status === "done"}
-                >
-                  <option value="">Tanpa Toko</option>
-                  {stores.map(st => (
-                    <option key={st.id} value={st.id}>{st.name}</option>
-                  ))}
-                </select>
+
+                {detail.nota.status === "done" ? (
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                    {detail.nota.store_name || "Tanpa Toko"}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsStoreDropdownOpen(!isStoreDropdownOpen)}
+                      className="text-[10px] font-bold text-slate-500 bg-transparent outline-none cursor-pointer hover:text-violet-600 transition-colors uppercase tracking-widest flex items-center gap-1"
+                    >
+                      {detail.nota.store_name || "Tanpa Toko"}
+                      <svg className={`w-3 h-3 transition-transform ${isStoreDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {isStoreDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setIsStoreDropdownOpen(false)}
+                        />
+
+                        <div className="absolute left-0 top-full mt-1 z-20 min-w-[140px] bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
+                          <div
+                            className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-violet-50 hover:text-violet-600 cursor-pointer transition-colors"
+                            onClick={() => {
+                              updateNota({ store_id: null, store_name: null });
+                              setIsStoreDropdownOpen(false);
+                            }}
+                          >
+                            Tanpa Toko...
+                          </div>
+                          {stores.map(st => (
+                            <div
+                              key={st.id}
+                              className="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-violet-50 hover:text-violet-600 cursor-pointer transition-colors"
+                              onClick={() => {
+                                updateNota({ store_id: st.id, store_name: st.name });
+                                setIsStoreDropdownOpen(false);
+                              }}
+                            >
+                              {st.name}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <span className="text-slate-300">•</span>
               <span className="text-[10px] text-violet-600 font-extrabold uppercase tracking-widest">
@@ -188,7 +240,10 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
             <PlusCircle size={14} /> TAMBAH SPPG
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              setSectionToPrint(null);
+              setTimeout(() => window.print(), 100);
+            }}
             className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl text-xs font-extrabold shadow-lg shadow-slate-500/20 transition-all flex items-center gap-2 uppercase tracking-widest active:scale-95 print:hidden"
           >
             <Printer size={14} /> PRINT SEMUA
@@ -227,6 +282,7 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
               kitchens={kitchens}
               products={products}
               onReload={loadAll}
+              onPrint={() => printSingleSection(section.id)}
               isFinalized={detail.nota.status === "done"}
             />
           ))}
@@ -260,55 +316,101 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
           {`
             @media print {
               @page { size: 80mm auto; margin: 0; }
-              body { font-family: 'Courier New', Courier, monospace; font-size: 10pt; }
-              .thermal-nota { width: 70mm; margin: 0 auto; padding: 5mm 0; page-break-after: always; }
-              .thermal-title { text-align: center; font-weight: bold; font-size: 14pt; margin-bottom: 2mm; }
-              .thermal-divider { border-bottom: 1px dashed #000; margin: 2mm 0; }
-              .thermal-item-row { display: flex; justify-content: space-between; margin-bottom: 1mm; font-size: 9pt; }
-              .thermal-total { display: flex; justify-content: space-between; font-weight: bold; margin-top: 2mm; border-top: 1px solid #000; padding-top: 2mm; }
-              .thermal-footer { text-align: center; font-size: 8pt; margin-top: 5mm; font-style: italic; }
+              body { font-family: 'Courier New', Courier, monospace; font-size: 9pt; line-height: 1.2; color: #000; }
+              .thermal-nota { width: 72mm; margin: 0 auto; padding: 5mm 0; page-break-after: always; }
+              .thermal-header { text-align: center; margin-bottom: 4mm; border-bottom: 2px dashed #000; padding-bottom: 4mm; }
+              .thermal-store-name { font-size: 14pt; font-weight: 900; margin-bottom: 1mm; text-transform: uppercase; }
+              .thermal-store-info { font-size: 8pt; color: #333; }
+              .thermal-doc-title { font-size: 10pt; font-weight: bold; margin: 3mm 0; text-decoration: underline; }
+              
+              .thermal-info-grid { font-size: 8pt; margin-bottom: 3mm; border-bottom: 1px dashed #000; padding-bottom: 3mm; }
+              .thermal-info-row { display: flex; justify-content: space-between; margin-bottom: 0.5mm; }
+              
+              .thermal-item { margin-bottom: 3mm; }
+              .thermal-item-name { font-weight: bold; font-size: 9pt; text-transform: uppercase; }
+              .thermal-item-detail { display: flex; justify-content: space-between; font-size: 8pt; color: #444; }
+              
+              .thermal-totals { border-top: 2px dashed #000; margin-top: 3mm; padding-top: 3mm; }
+              .thermal-total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 11pt; }
+              
+              .thermal-footer { text-align: center; font-size: 8pt; margin-top: 8mm; padding-top: 4mm; border-top: 1px dashed #000; }
             }
           `}
         </style>
 
-        {detail.sections.map((section) => {
-          const sectionItems = detail.items.filter(i => i.section_id === section.id);
-          if (sectionItems.length === 0) return null;
-          const sectionTotal = sectionItems.reduce((s, i) => s + (i.subtotal || 0), 0);
+        {detail.sections
+          .filter(s => !sectionToPrint || s.id === sectionToPrint)
+          .map((section) => {
+            const sectionItems = detail.items.filter(i => i.section_id === section.id);
+            if (sectionItems.length === 0) return null;
+            const sectionTotal = sectionItems.reduce((s, i) => s + (i.subtotal || 0), 0);
 
-          return (
-            <div key={section.id} className="thermal-nota">
-              <div className="thermal-title">ZEN SUPPLIER</div>
-              <div style={{ textAlign: 'center', fontSize: '8pt' }}>NOTA BREAKDOWN</div>
-              <div className="thermal-divider"></div>
-              <div style={{ fontSize: '8pt', marginBottom: '1mm' }}>
-                No: {detail.nota.nota_number}<br />
-                Tgl: {detail.nota.purchase_date}<br />
-                Toko: {detail.nota.store_name || "-"}<br />
-                SPPG: {section.dapur_name || section.section_label}
-              </div>
-              <div className="thermal-divider"></div>
-
-              {sectionItems.map((item, idx) => (
-                <div key={idx} className="thermal-item-row">
-                  <div style={{ flex: 1 }}>{item.product_name}</div>
-                  <div style={{ width: '15mm', textAlign: 'right' }}>{item.quantity}{item.unit.slice(0, 2)}</div>
-                  <div style={{ width: '20mm', textAlign: 'right' }}>{(item.subtotal || 0).toLocaleString("id-ID")}</div>
+            return (
+              <div key={section.id} className="thermal-nota">
+                <div className="thermal-header">
+                  <div className="thermal-store-name">{selectedStore?.name || "ZEN SUPPLIER"}</div>
+                  <div className="thermal-store-info">
+                    {selectedStore?.address && <div>{selectedStore.address}</div>}
+                    {selectedStore?.pic_phone && <div>Telp: {selectedStore.pic_phone}</div>}
+                  </div>
                 </div>
-              ))}
 
-              <div className="thermal-total">
-                <span>TOTAL</span>
-                <span>Rp {sectionTotal.toLocaleString("id-ID")}</span>
+                <div className="text-center">
+                  <div className="thermal-doc-title">BUKTI PENYERAHAN BARANG</div>
+                </div>
+
+                <div className="thermal-info-grid">
+                  <div className="thermal-info-row">
+                    <span>No. Nota:</span>
+                    <span style={{ fontWeight: 'bold' }}>{detail.nota.nota_number}</span>
+                  </div>
+                  <div className="thermal-info-row">
+                    <span>Tanggal:</span>
+                    <span>{detail.nota.purchase_date}</span>
+                  </div>
+                  <div className="thermal-info-row">
+                    <span>SPPG:</span>
+                    <span style={{ fontWeight: 'bold' }}>{section.dapur_name || section.section_label}</span>
+                  </div>
+                </div>
+
+                <div className="thermal-items">
+                  {sectionItems.map((item, idx) => (
+                    <div key={idx} className="thermal-item">
+                      <div className="thermal-item-name">{item.product_name}</div>
+                      <div className="thermal-item-detail">
+                        <span>{item.quantity} {item.unit} x {(item.buy_price || 0).toLocaleString("id-ID")}</span>
+                        <span style={{ fontWeight: 'bold', color: '#000' }}>{(item.subtotal || 0).toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="thermal-totals">
+                  <div className="thermal-total-row">
+                    <span>TOTAL</span>
+                    <span>Rp {sectionTotal.toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+
+                <div className="thermal-footer">
+                  <p style={{ marginBottom: '2mm' }}>Terima kasih atas kerja samanya.</p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6mm' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: '7pt' }}>Pengirim,</p>
+                      <div style={{ height: '10mm' }}></div>
+                      <p>( ____________ )</p>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <p style={{ fontSize: '7pt' }}>Penerima,</p>
+                      <div style={{ height: '10mm' }}></div>
+                      <p>( ____________ )</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="thermal-divider"></div>
-              <div className="thermal-footer">
-                Terima kasih telah berbelanja.<br />
-                Breakdown Nota Zen Supplier System
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );
@@ -322,6 +424,7 @@ interface SectionCardProps {
   kitchens: Kitchen[];
   products: Product[];
   onReload: () => void;
+  onPrint: () => void;
   isFinalized: boolean;
 }
 
@@ -331,6 +434,7 @@ const NotaSectionCard: React.FC<SectionCardProps> = ({
   kitchens,
   products,
   onReload,
+  onPrint,
   isFinalized
 }) => {
   const [label, setLabel] = useState(section.section_label);
@@ -535,6 +639,13 @@ const NotaSectionCard: React.FC<SectionCardProps> = ({
             )}
           </div>
 
+          <button
+            onClick={onPrint}
+            className="p-2.5 text-slate-300 hover:text-violet-500 hover:bg-violet-50 rounded-xl transition-all"
+            title="Print SPPG Ini"
+          >
+            <Printer size={16} />
+          </button>
           {!isFinalized && (
             <button
               onClick={deleteSection}
@@ -604,7 +715,7 @@ const NotaItemRow: React.FC<ItemRowProps> = ({ item, products, onReload, isFinal
   const [qty, setQty] = useState(item.quantity.toString());
   const [price, setPrice] = useState((item.buy_price || 0).toString());
   const [isDirty, setIsDirty] = useState(false);
-  
+
   useEffect(() => {
     setQty(item.quantity.toString());
     setPrice((item.buy_price || 0).toString());
@@ -667,8 +778,8 @@ const NotaItemRow: React.FC<ItemRowProps> = ({ item, products, onReload, isFinal
               if (u) {
                 const newPrice = u.latest_buy_price || 0;
                 setPrice(newPrice.toString());
-                handleUpdate({ 
-                  unit: u.unit_name, 
+                handleUpdate({
+                  unit: u.unit_name,
                   unit_id: u.id,
                   buy_price: newPrice
                 });

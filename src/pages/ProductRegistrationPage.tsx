@@ -87,19 +87,36 @@ export const ProductRegistrationPage: React.FC<
       setBaseUnit(editingProduct.base_unit);
       setCategory(editingProduct.category || "");
       setSupplierId(editingProduct.supplier_id);
-      setItemType(editingProduct.item_type as any || "dapur");
-      setBuyPrice(editingProduct.latest_buy_price || "");
-      setSellPrice(editingProduct.latest_sell_price || "");
+      setItemType((editingProduct.item_type as any) || "dapur");
+
+      // Use nullish coalescing to preserve 0 if it exists as a price
+      const baseBuy = editingProduct.latest_buy_price ?? "";
+      const baseSell = editingProduct.latest_sell_price ?? "";
+      setBuyPrice(baseBuy);
+      setSellPrice(baseSell);
 
       const units: AdditionalUnit[] = (editingProduct.units || [])
-        .filter(u => !u.is_base_unit)
-        .map(u => ({
-          unit_name: u.unit_name,
-          conversion: u.conversion_to_base,
-          buy_price: "", // We don't easily have latest price per unit here, but can derive
-          sell_price: "",
-          is_custom_price: false
-        }));
+        .filter((u) => !u.is_base_unit)
+        .map((u) => {
+          const bp = u.latest_buy_price;
+          const sp = u.latest_sell_price;
+
+          // Determine if it's custom or derived
+          const expectedBuy = typeof baseBuy === "number" ? baseBuy * u.conversion_to_base : 0;
+          const expectedSell = typeof baseSell === "number" ? baseSell * u.conversion_to_base : 0;
+
+          // It's custom if the price is set in DB and deviates from base price * conversion
+          const isCustom = (bp !== null && Math.abs(bp - expectedBuy) > 0.1) ||
+            (sp !== null && Math.abs(sp - expectedSell) > 0.1);
+
+          return {
+            unit_name: u.unit_name,
+            conversion: u.conversion_to_base,
+            buy_price: bp ?? (expectedBuy || ""),
+            sell_price: sp ?? (expectedSell || ""),
+            is_custom_price: isCustom,
+          };
+        });
       setAdditionalUnits(units);
     }
   }, [editingProduct]);
@@ -806,7 +823,7 @@ export const ProductRegistrationPage: React.FC<
                                 className={`w-full pr-3.5 py-2.5 bg-slate-50 border rounded-2xl outline-none transition-all font-extrabold text-sm ${u.is_custom_price ? "border-blue-200 text-blue-600 bg-blue-50/30 focus:border-blue-500" : "border-slate-200 text-slate-400 opacity-70 focus:border-blue-500"}`}
                               />
                             </div>
-                            <div className="col-span-1 flex justify-end gap-2">
+                            <div className="col-span-1 flex justify-end gap-5">
                               {u.is_custom_price && (
                                 <button
                                   onClick={() =>

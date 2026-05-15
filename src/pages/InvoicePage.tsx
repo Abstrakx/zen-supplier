@@ -14,6 +14,7 @@ import {
 import { formatIndonesianDate } from "../utils/formatters";
 import type { Invoice, InvoiceDetail, Product, ProductUnit } from "../types";
 import Swal from "sweetalert2";
+import { CurrencyInput } from "../components/CurrencyInput";
 
 export const InvoicePage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -125,7 +126,7 @@ export const InvoicePage: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<ProductUnit | null>(null);
   const [addQty, setAddQty] = useState(1);
-  const [addPrice, setAddPrice] = useState(0);
+  const [addPrice, setAddPrice] = useState<number | "">(0);
 
   const filteredProducts = products
     .filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
@@ -139,7 +140,7 @@ export const InvoicePage: React.FC = () => {
         productName: selectedProduct.name,
         quantity: addQty,
         unit: selectedUnit.unit_name,
-        unitPrice: addPrice,
+        unitPrice: typeof addPrice === "number" ? addPrice : 0,
         productId: selectedProduct.id,
         unitId: selectedUnit.id,
       });
@@ -434,7 +435,7 @@ export const InvoicePage: React.FC = () => {
                           Satuan
                         </label>
                         <select
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                          className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold"
                           value={selectedUnit?.id || ""}
                           onChange={(e) => {
                             const unit =
@@ -465,7 +466,7 @@ export const InvoicePage: React.FC = () => {
                         </label>
                         <input
                           type="number"
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold"
                           value={addQty}
                           onChange={(e) =>
                             setAddQty(parseFloat(e.target.value))
@@ -476,13 +477,11 @@ export const InvoicePage: React.FC = () => {
                         <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">
                           Harga
                         </label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                        <CurrencyInput
                           value={addPrice}
-                          onChange={(e) =>
-                            setAddPrice(parseFloat(e.target.value))
-                          }
+                          onChange={(val) => setAddPrice(val)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold"
+                          placeholder="0"
                         />
                       </div>
                     </div>

@@ -154,23 +154,13 @@ pub fn get_products(state: State<'_, DbState>) -> Result<Vec<Product>, String> {
                 }
             }
 
-            // Get latest buy price
-            p.latest_buy_price = conn
-                .query_row(
-                    "SELECT price FROM price_history WHERE product_id = ?1 AND price_type = 'buy' ORDER BY recorded_at DESC LIMIT 1",
-                    [&p.id],
-                    |row| row.get(0),
-                )
-                .ok();
-
-            // Get latest sell price
-            p.latest_sell_price = conn
-                .query_row(
-                    "SELECT price FROM price_history WHERE product_id = ?1 AND price_type = 'sell' ORDER BY recorded_at DESC LIMIT 1",
-                    [&p.id],
-                    |row| row.get(0),
-                )
-                .ok();
+            // Get latest buy/sell price SPECIFICALLY for the base unit
+            // This prevents prices from other units (e.g. KRAT) from appearing as base price
+            let base_unit = p.units.iter().find(|u| u.is_base_unit);
+            if let Some(bu) = base_unit {
+                p.latest_buy_price = bu.latest_buy_price;
+                p.latest_sell_price = bu.latest_sell_price;
+            }
 
             products.push(p);
         }
