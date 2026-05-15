@@ -19,6 +19,12 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
     // Enable WAL mode for better performance
     conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
 
+    apply_schema(&conn)?;
+
+    Ok(conn)
+}
+
+fn apply_schema(conn: &rusqlite::Connection) -> Result<(), rusqlite::Error> {
     // Create all tables
     conn.execute_batch(
         "
@@ -183,7 +189,7 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
         CREATE TABLE IF NOT EXISTS invoice_items (
             id TEXT PRIMARY KEY,
             invoice_id TEXT NOT NULL,
-            order_item_id TEXT NOT NULL,
+            order_item_id TEXT,
             product_name TEXT NOT NULL,
             day_name TEXT,
             item_date TEXT,
@@ -194,6 +200,8 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
             subtotal REAL NOT NULL,
             product_id TEXT,
             unit_id TEXT,
+            is_manual INTEGER DEFAULT 0,
+            original_price REAL,
             FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
             FOREIGN KEY (order_item_id) REFERENCES order_items(id),
             FOREIGN KEY (product_id) REFERENCES products(id),
@@ -376,8 +384,40 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
         );
         "
     );
+    
+    // Migration to make order_item_id nullable in invoice_items
+    let _ = conn.execute_batch("
+        PRAGMA foreign_keys=OFF;
+        CREATE TABLE IF NOT EXISTS invoice_items_temp (
+            id TEXT PRIMARY KEY,
+            invoice_id TEXT NOT NULL,
+            order_item_id TEXT,
+            product_name TEXT NOT NULL,
+            day_name TEXT,
+            item_date TEXT,
+            quantity REAL NOT NULL,
+            unit TEXT NOT NULL,
+            unit_price REAL NOT NULL,
+            buy_price REAL,
+            subtotal REAL NOT NULL,
+            product_id TEXT,
+            unit_id TEXT,
+            is_manual INTEGER DEFAULT 0,
+            original_price REAL,
+            FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
+            FOREIGN KEY (order_item_id) REFERENCES order_items(id),
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (unit_id) REFERENCES product_units(id)
+        );
+        INSERT OR IGNORE INTO invoice_items_temp (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id) 
+        SELECT id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id FROM invoice_items;
+        DROP TABLE IF EXISTS invoice_items;
+        ALTER TABLE invoice_items_temp RENAME TO invoice_items;
+        UPDATE invoice_items SET original_price = unit_price WHERE original_price IS NULL;
+        PRAGMA foreign_keys=ON;
+    ")?;
 
-    Ok(conn)
+    Ok(())
 }
 
 #[tauri::command]
@@ -401,6 +441,7 @@ pub fn reset_database(state: tauri::State<'_, crate::commands::DbState>) -> Resu
         let _ = conn.execute(&format!("DROP TABLE IF EXISTS {}", table), []);
     }
 
+    apply_schema(&conn).map_err(|e| e.to_string())?;
     let _ = conn.execute("PRAGMA foreign_keys = ON", []);
 
     Ok(())

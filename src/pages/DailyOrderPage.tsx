@@ -13,6 +13,7 @@ import {
 import type { DailyOrder, Kitchen } from "../types";
 import Swal from "sweetalert2";
 import { AggregatePOModal } from "../components/AggregatePOModal";
+import { formatIndonesianDate } from "../utils/formatters";
 
 interface Props {
   onOpenDetail: (orderId: string) => void;
@@ -232,7 +233,7 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
                   <div className="bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2">
                     <Calendar size={16} className="text-blue-600" />
                     <span className="text-sm font-black text-slate-800 uppercase tracking-widest">
-                      {new Date(date).toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      {formatIndonesianDate(date)}
                     </span>
                   </div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">

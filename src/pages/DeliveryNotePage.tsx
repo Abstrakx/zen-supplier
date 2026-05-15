@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Truck, Printer, Eye, FileText, Search, X } from "lucide-react";
+import appIcon from "../assets/app-icon.png";
 import type { DeliveryNote, DeliveryNoteDetail } from "../types";
 import Swal from "sweetalert2";
+import { formatIndonesianDate } from "../utils/formatters";
 
 export const DeliveryNotePage: React.FC = () => {
   const [notes, setNotes] = useState<DeliveryNote[]>([]);
@@ -11,6 +13,7 @@ export const DeliveryNotePage: React.FC = () => {
     null,
   );
   const [search, setSearch] = useState("");
+  
 
   useEffect(() => {
     loadNotes();
@@ -192,19 +195,26 @@ export const DeliveryNotePage: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-8">
               {/* Paper Layout */}
               <div className="bg-white border-2 border-slate-200 p-10 rounded shadow-sm text-black font-mono relative">
-                <div className="text-center mb-8 border-b-2 border-black pb-4">
-                  <h1 className="text-2xl font-black tracking-tighter">
-                    ZEN SUPPLIER
-                  </h1>
-                  <p className="text-xs uppercase font-bold tracking-widest text-gray-500">
-                    Logistics & Supply Management
-                  </p>
-                  <div className="mt-4 bg-black text-white inline-block px-4 py-1 text-sm font-black">
-                    SURAT JALAN
+                <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-6">
+                  <div className="flex items-center gap-4">
+                    <img src={appIcon} alt="Zen Supplier" className="w-16 h-16 object-contain" />
+                    <div className="text-left">
+                      <h1 className="text-2xl font-black tracking-tighter">
+                        ZEN SUPPLIER
+                      </h1>
+                      <p className="text-xs uppercase font-bold tracking-widest text-gray-500">
+                        Logistics & Supply Management
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-sm font-bold mt-2">
-                    NO: {selectedNote.note.delivery_number}
-                  </p>
+                  <div className="text-right">
+                    <div className="bg-black text-white inline-block px-4 py-1 text-sm font-black mb-2">
+                      SURAT JALAN
+                    </div>
+                    <p className="text-sm font-bold">
+                      NO: {selectedNote.note.delivery_number}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-8 text-xs mb-8">
@@ -213,7 +223,7 @@ export const DeliveryNotePage: React.FC = () => {
                       TANGGAL KIRIM
                     </p>
                     <p className="font-bold text-sm">
-                      {selectedNote.note.delivery_date}
+                      {formatIndonesianDate(selectedNote.note.delivery_date)}
                     </p>
                   </div>
                   <div className="text-right">
@@ -323,61 +333,117 @@ export const DeliveryNotePage: React.FC = () => {
       <div className="hidden print:block fixed inset-0 bg-white z-9999">
         {selectedNote && (
           <div className="p-8 text-black font-mono">
-            <div className="text-center mb-8 border-b-2 border-black pb-4">
-              <h1 className="text-2xl font-black tracking-tighter">
-                ZEN SUPPLIER
-              </h1>
-              <p className="text-sm font-bold mt-1 uppercase">SURAT JALAN</p>
-              <p className="text-sm font-bold">
-                NO: {selectedNote.note.delivery_number}
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-8 text-sm mb-8 font-bold">
-              <div>TANGGAL: {selectedNote.note.delivery_date}</div>
-              <div className="text-right uppercase">
-                TUJUAN: {selectedNote.note.kitchen_name}
+            <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-6">
+              <div className="flex items-center gap-4">
+                <img src={appIcon} alt="Zen Supplier" className="w-16 h-16 object-contain" />
+                <div className="text-left">
+                  <h1 className="text-2xl font-black tracking-tighter">
+                    ZEN SUPPLIER
+                  </h1>
+                  <p className="text-xs uppercase font-bold tracking-widest text-gray-500">
+                    Logistics & Supply Management
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="bg-black text-white inline-block px-4 py-1 text-sm font-black mb-2">
+                  SURAT JALAN
+                </div>
+                <p className="text-sm font-bold">
+                  NO: {selectedNote.note.delivery_number}
+                </p>
               </div>
             </div>
-            <table className="w-full border-collapse border border-black text-sm">
+
+            <div className="grid grid-cols-2 gap-8 text-xs mb-8">
+              <div>
+                <p className="text-gray-400 uppercase font-black text-[9px]">
+                  TANGGAL KIRIM
+                </p>
+                <p className="font-bold text-sm">
+                  {formatIndonesianDate(selectedNote.note.delivery_date)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-400 uppercase font-black text-[9px]">
+                  TUJUAN PENGIRIMAN
+                </p>
+                <p className="font-bold text-sm uppercase">
+                  {selectedNote.note.kitchen_name}
+                </p>
+              </div>
+            </div>
+
+            <table className="w-full border-collapse border border-black text-[11px]">
               <thead>
-                <tr className="bg-gray-100 uppercase">
-                  <th className="border border-black px-3 py-2 w-12">#</th>
-                  <th className="border border-black px-3 py-2 text-left">
-                    ITEM
+                <tr className="bg-gray-50 uppercase font-black">
+                  <th className="border border-black px-3 py-3 w-10 text-center">
+                    #
                   </th>
-                  <th className="border border-black px-3 py-2 w-24 text-right">
+                  <th className="border border-black px-4 py-3 text-left">
+                    NAMA BARANG / ITEM
+                  </th>
+                  <th className="border border-black px-4 py-3 w-20 text-right">
                     QTY
                   </th>
-                  <th className="border border-black px-3 py-2 w-20">UNIT</th>
+                  <th className="border border-black px-4 py-3 w-20 text-center">
+                    UNIT
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {selectedNote.items.map((item, i) => (
-                  <tr key={item.id}>
-                    <td className="border border-black px-3 py-2 text-center">
+                  <tr key={item.id} className="border-b border-gray-200">
+                    <td className="border-x border-black px-3 py-3 text-center font-bold text-gray-400">
                       {i + 1}
                     </td>
-                    <td className="border border-black px-3 py-2 font-bold">
+                    <td className="border-x border-black px-4 py-3 font-bold">
                       {item.product_name}
                     </td>
-                    <td className="border border-black px-3 py-2 text-right font-black">
+                    <td className="border-x border-black px-4 py-3 text-right font-black text-sm">
                       {item.quantity}
                     </td>
-                    <td className="border border-black px-3 py-2 text-center uppercase">
+                    <td className="border-x border-black px-4 py-3 text-center uppercase font-bold">
                       {item.unit}
                     </td>
                   </tr>
                 ))}
+                {/* Fill empty rows to make it look like a real form */}
+                {[...Array(Math.max(0, 5 - selectedNote.items.length))].map(
+                  (_, i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      <td className="border-x border-black px-3 py-4 text-center"></td>
+                      <td className="border-x border-black px-4 py-4"></td>
+                      <td className="border-x border-black px-4 py-4 text-right"></td>
+                      <td className="border-x border-black px-4 py-4 text-center"></td>
+                    </tr>
+                  ),
+                )}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="border border-black px-4 py-2 bg-gray-50 text-[9px] font-black uppercase text-gray-400 italic"
+                  >
+                    * Barang telah diperiksa dan diterima dalam kondisi baik
+                  </td>
+                </tr>
+              </tfoot>
             </table>
-            <div className="grid grid-cols-2 gap-16 mt-20 text-center text-xs font-bold uppercase">
+
+            <div className="grid grid-cols-2 gap-16 mt-16 text-center text-[10px] font-black uppercase">
               <div>
-                <p className="mb-16">PENGIRIM,</p>
-                <p>(________________)</p>
+                <p className="mb-16">ZEN SUPPLIER</p>
+                <div className="w-32 h-px bg-black mx-auto"></div>
+                <p className="mt-2 text-gray-400">Pengirim</p>
               </div>
               <div>
-                <p className="mb-16">PENERIMA,</p>
-                <p>(________________)</p>
+                <p className="mb-16">{selectedNote.note.kitchen_name}</p>
+                <div className="w-32 h-px bg-black mx-auto"></div>
+                <p className="mt-2 text-gray-400">
+                  Penerima
+                </p>
               </div>
             </div>
           </div>

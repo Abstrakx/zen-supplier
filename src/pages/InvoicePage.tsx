@@ -11,6 +11,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
+import { formatIndonesianDate } from "../utils/formatters";
 import type { Invoice, InvoiceDetail, Product, ProductUnit } from "../types";
 import Swal from "sweetalert2";
 
@@ -83,7 +84,11 @@ export const InvoicePage: React.FC = () => {
     }
   };
 
-  const updateItem = async (itemId: string, quantity: number, unitPrice: number) => {
+  const updateItem = async (
+    itemId: string,
+    quantity: number,
+    unitPrice: number,
+  ) => {
     try {
       await invoke("update_invoice_item", { itemId, quantity, unitPrice });
       if (selectedInvoice) viewDetail(selectedInvoice.invoice.id);
@@ -122,9 +127,9 @@ export const InvoicePage: React.FC = () => {
   const [addQty, setAddQty] = useState(1);
   const [addPrice, setAddPrice] = useState(0);
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(productSearch.toLowerCase())
-  ).slice(0, 5);
+  const filteredProducts = products
+    .filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+    .slice(0, 5);
 
   const handleAddProduct = async () => {
     if (!selectedInvoice || !selectedProduct || !selectedUnit) return;
@@ -136,7 +141,7 @@ export const InvoicePage: React.FC = () => {
         unit: selectedUnit.unit_name,
         unitPrice: addPrice,
         productId: selectedProduct.id,
-        unitId: selectedUnit.id
+        unitId: selectedUnit.id,
       });
       viewDetail(selectedInvoice.invoice.id);
       loadInvoices();
@@ -157,8 +162,9 @@ export const InvoicePage: React.FC = () => {
 
   const selectProduct = (p: Product) => {
     setSelectedProduct(p);
-    setSelectedUnit(p.units[0]);
-    setAddPrice(p.latest_sell_price || 0);
+    const firstUnit = p.units[0];
+    setSelectedUnit(firstUnit);
+    setAddPrice(firstUnit?.latest_sell_price ?? p.latest_sell_price ?? 0);
   };
 
   const filteredInvoices = invoices.filter(
@@ -169,12 +175,14 @@ export const InvoicePage: React.FC = () => {
 
   const groupedInvoices = useMemo(() => {
     const groups: Record<string, Invoice[]> = {};
-    filteredInvoices.forEach(inv => {
+    filteredInvoices.forEach((inv) => {
       const key = inv.daily_order_id || `${inv.kitchen_id}-${inv.invoice_date}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(inv);
     });
-    return Object.values(groups).sort((a, b) => b[0].invoice_date.localeCompare(a[0].invoice_date));
+    return Object.values(groups).sort((a, b) =>
+      b[0].invoice_date.localeCompare(a[0].invoice_date),
+    );
   }, [filteredInvoices]);
 
   return (
@@ -236,7 +244,7 @@ export const InvoicePage: React.FC = () => {
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-3">
                     {group[0].kitchen_name}
                     <span className="text-[10px] text-slate-400 font-bold bg-white border border-slate-100 px-2.5 py-1 rounded-lg shadow-sm">
-                      {group[0].invoice_date}
+                      {formatIndonesianDate(group[0].invoice_date)}
                     </span>
                   </h3>
                 </div>
@@ -249,12 +257,14 @@ export const InvoicePage: React.FC = () => {
                     className="bg-white p-5 rounded-4xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-5">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-inner transition-all duration-300 ${inv.invoice_type === 'operational'
-                        ? 'bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-600 group-hover:text-white'
-                        : inv.invoice_type === 'rapelan'
-                          ? 'bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white'
-                          : 'bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white'
-                        }`}>
+                      <div
+                        className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 shadow-inner transition-all duration-300 ${inv.invoice_type === "operational"
+                          ? "bg-purple-50 text-purple-600 border-purple-100 group-hover:bg-purple-600 group-hover:text-white"
+                          : inv.invoice_type === "rapelan"
+                            ? "bg-indigo-50 text-indigo-600 border-indigo-100 group-hover:bg-indigo-600 group-hover:text-white"
+                            : "bg-amber-50 text-amber-600 border-amber-100 group-hover:bg-amber-600 group-hover:text-white"
+                          }`}
+                      >
                         <Receipt size={24} strokeWidth={2.5} />
                       </div>
                       <div>
@@ -264,12 +274,24 @@ export const InvoicePage: React.FC = () => {
                           </h4>
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-[10px] font-bold uppercase tracking-widest">
-                          <span className={`${inv.invoice_type === 'operational' ? 'text-purple-500' : inv.invoice_type === 'rapelan' ? 'text-indigo-600' : 'text-amber-600'
-                            } bg-slate-50 px-2 py-0.5 rounded border border-slate-100`}>
-                            {inv.invoice_type === 'operational' ? 'OPS' : inv.invoice_type === 'rapelan' ? 'RAPELAN' : 'BAHAN DAPUR'}
+                          <span
+                            className={`${inv.invoice_type === "operational"
+                              ? "text-purple-500"
+                              : inv.invoice_type === "rapelan"
+                                ? "text-indigo-600"
+                                : "text-amber-600"
+                              } bg-slate-50 px-2 py-0.5 rounded border border-slate-100`}
+                          >
+                            {inv.invoice_type === "operational"
+                              ? "OPS"
+                              : inv.invoice_type === "rapelan"
+                                ? "RAPELAN"
+                                : "BAHAN DAPUR"}
                           </span>
                           <span className="text-slate-200">•</span>
-                          <span className="text-slate-400 font-medium">{inv.item_count} ITEMS</span>
+                          <span className="text-slate-400 font-medium">
+                            {inv.item_count} ITEMS
+                          </span>
                           <span className="text-slate-200">•</span>
                           <span className="text-emerald-600 font-black">
                             Rp {inv.total_amount.toLocaleString("id-ID")}
@@ -331,13 +353,18 @@ export const InvoicePage: React.FC = () => {
                     <Plus size={16} className="text-emerald-500" />
                     Tambah Item dari Katalog
                   </h4>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="relative">
-                      <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Cari Produk</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">
+                        Cari Produk
+                      </label>
                       <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
+                        <Search
+                          size={14}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
                           className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold"
                           placeholder="Nama barang..."
                           value={productSearch}
@@ -347,24 +374,33 @@ export const InvoicePage: React.FC = () => {
                           }}
                         />
                       </div>
-                      
+
                       {!selectedProduct && productSearch.length > 0 && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
-                          {filteredProducts.map(p => (
+                          {filteredProducts.map((p) => (
                             <button
                               key={p.id}
                               onClick={() => selectProduct(p)}
                               className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex justify-between items-center group"
                             >
                               <div>
-                                <div className="text-sm font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">{p.name}</div>
-                                <div className="text-[10px] text-slate-400 uppercase font-bold">{p.category} • {p.base_unit}</div>
+                                <div className="text-sm font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">
+                                  {p.name} {p.neto ? "@" + p.neto : " "}
+                                </div>
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">
+                                  {p.category} • {p.base_unit}
+                                </div>
                               </div>
-                              <Plus size={14} className="text-slate-300 group-hover:text-emerald-500" />
+                              <Plus
+                                size={14}
+                                className="text-slate-300 group-hover:text-emerald-500"
+                              />
                             </button>
                           ))}
                           {filteredProducts.length === 0 && (
-                            <div className="px-4 py-3 text-sm text-slate-400 italic">Produk tidak ditemukan</div>
+                            <div className="px-4 py-3 text-sm text-slate-400 italic">
+                              Produk tidak ditemukan
+                            </div>
                           )}
                         </div>
                       )}
@@ -372,10 +408,20 @@ export const InvoicePage: React.FC = () => {
                       {selectedProduct && (
                         <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
                           <div>
-                            <div className="text-sm font-black text-emerald-900">{selectedProduct.name}</div>
-                            <div className="text-[10px] font-bold text-emerald-600 uppercase">{selectedProduct.base_unit}</div>
+                            <div className="text-sm font-black text-emerald-900">
+                              {selectedProduct.name}{" "}
+                              {selectedProduct.neto
+                                ? "@" + selectedProduct.neto
+                                : ""}
+                            </div>
+                            <div className="text-[10px] font-bold text-emerald-600 uppercase">
+                              {selectedProduct.base_unit}
+                            </div>
                           </div>
-                          <button onClick={() => setSelectedProduct(null)} className="p-1 hover:bg-emerald-200 rounded text-emerald-600">
+                          <button
+                            onClick={() => setSelectedProduct(null)}
+                            className="p-1 hover:bg-emerald-200 rounded text-emerald-600"
+                          >
                             <X size={14} />
                           </button>
                         </div>
@@ -384,47 +430,72 @@ export const InvoicePage: React.FC = () => {
 
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Satuan</label>
-                        <select 
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">
+                          Satuan
+                        </label>
+                        <select
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
                           value={selectedUnit?.id || ""}
-                          onChange={(e) => setSelectedUnit(selectedProduct?.units.find((u: ProductUnit) => u.id === e.target.value) || null)}
+                          onChange={(e) => {
+                            const unit =
+                              selectedProduct?.units.find(
+                                (u: ProductUnit) => u.id === e.target.value,
+                              ) || null;
+                            setSelectedUnit(unit);
+                            if (unit) {
+                              setAddPrice(
+                                unit.latest_sell_price ??
+                                selectedProduct?.latest_sell_price ??
+                                0,
+                              );
+                            }
+                          }}
                           disabled={!selectedProduct}
                         >
                           {selectedProduct?.units.map((u: ProductUnit) => (
-                            <option key={u.id} value={u.id}>{u.unit_name}</option>
+                            <option key={u.id} value={u.id}>
+                              {u.unit_name}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Qty</label>
-                        <input 
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">
+                          Qty
+                        </label>
+                        <input
                           type="number"
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
                           value={addQty}
-                          onChange={(e) => setAddQty(parseFloat(e.target.value))}
+                          onChange={(e) =>
+                            setAddQty(parseFloat(e.target.value))
+                          }
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Harga</label>
-                        <input 
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">
+                          Harga
+                        </label>
+                        <input
                           type="number"
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
                           value={addPrice}
-                          onChange={(e) => setAddPrice(parseFloat(e.target.value))}
+                          onChange={(e) =>
+                            setAddPrice(parseFloat(e.target.value))
+                          }
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-6 flex justify-end gap-3">
-                    <button 
+                    <button
                       onClick={() => setShowAddItem(false)}
                       className="px-6 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-800"
                     >
                       Batal
                     </button>
-                    <button 
+                    <button
                       onClick={handleAddProduct}
                       disabled={!selectedProduct}
                       className="bg-emerald-600 text-white px-8 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 active:scale-95 transition-all"
@@ -470,7 +541,7 @@ export const InvoicePage: React.FC = () => {
                       TANGGAL CETAK:
                     </p>
                     <p className="font-black text-lg">
-                      {selectedInvoice.invoice.invoice_date}
+                      {formatIndonesianDate(selectedInvoice.invoice.invoice_date)}
                     </p>
                     <p
                       className={`text-[10px] font-black mt-2 inline-block px-2 py-1 rounded ${selectedInvoice.invoice.status === "finalized" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
@@ -502,8 +573,7 @@ export const InvoicePage: React.FC = () => {
                         SUBTOTAL
                       </th>
                       {selectedInvoice.invoice.status === "draft" && (
-                        <th className="border border-black px-4 py-3 w-10 text-center no-print">
-                        </th>
+                        <th className="border border-black px-4 py-3 w-10 text-center no-print"></th>
                       )}
                     </tr>
                   </thead>
@@ -537,7 +607,13 @@ export const InvoicePage: React.FC = () => {
                                 type="number"
                                 className="w-12 text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500 font-black"
                                 defaultValue={item.quantity}
-                                onBlur={(e) => updateItem(item.id, parseFloat(e.target.value), item.unit_price)}
+                                onBlur={(e) =>
+                                  updateItem(
+                                    item.id,
+                                    parseFloat(e.target.value),
+                                    item.unit_price,
+                                  )
+                                }
                               />
                               <span className="text-[10px] font-black text-slate-400 uppercase">
                                 {item.unit}
@@ -558,7 +634,13 @@ export const InvoicePage: React.FC = () => {
                               type="number"
                               className="w-full text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500"
                               defaultValue={item.unit_price}
-                              onBlur={(e) => updateItem(item.id, item.quantity, parseFloat(e.target.value))}
+                              onBlur={(e) =>
+                                updateItem(
+                                  item.id,
+                                  item.quantity,
+                                  parseFloat(e.target.value),
+                                )
+                              }
                             />
                           ) : (
                             item.unit_price.toLocaleString("id-ID")
@@ -639,7 +721,8 @@ export const InvoicePage: React.FC = () => {
                     onClick={() => setShowAddItem(!showAddItem)}
                     className="bg-emerald-50 text-emerald-600 px-6 py-2.5 rounded-xl font-black text-[10px] shadow-sm hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 uppercase tracking-widest"
                   >
-                    <Plus size={14} /> {showAddItem ? "Batal Tambah" : "Tambah Item Catalog"}
+                    <Plus size={14} />{" "}
+                    {showAddItem ? "Batal Tambah" : "Tambah Item Catalog"}
                   </button>
                 )}
               </div>
@@ -681,7 +764,7 @@ export const InvoicePage: React.FC = () => {
             </div>
             <div className="flex justify-between text-sm mb-8 font-bold uppercase">
               <div>KEPADA: {selectedInvoice.invoice.kitchen_name}</div>
-              <div>TANGGAL: {selectedInvoice.invoice.invoice_date}</div>
+              <div>TANGGAL: {formatIndonesianDate(selectedInvoice.invoice.invoice_date)}</div>
             </div>
             <table className="w-full border-collapse border border-black text-xs">
               <thead>

@@ -300,46 +300,38 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sectionItems.map((item, idx) => (
-                    <tr key={item.id} className="border-b border-slate-100">
-                      <td className="border border-slate-200 px-4 py-2 text-xs text-center">{idx + 1}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-xs font-bold uppercase">{item.product_name}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-xs font-bold text-right">{item.quantity}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-xs text-center uppercase">{item.unit}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-[10px] font-bold uppercase">{item.supplier_name || "-"}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-[10px] text-slate-500 italic">{item.notes || "-"}</td>
-                      <td className="border border-slate-200 px-4 py-2 text-center">
-                        <div className="w-4 h-4 border border-slate-400 mx-auto"></div>
-                      </td>
-                    </tr>
-                  ))}
+                  {sectionItems.map((item, idx) => {
+                    const itemSupplier = suppliers.find(s => s.id === item.supplier_id);
+                    const isExternal = itemSupplier && !itemSupplier.is_internal;
+                    return (
+                      <tr key={item.id} className={`border-b border-slate-100 ${isExternal ? "bg-amber-50" : ""}`}>
+                        <td className="border border-slate-200 px-4 py-2 text-xs text-center">{idx + 1}</td>
+                        <td className="border border-slate-200 px-4 py-2 text-xs uppercase">
+                          {item.product_name}
+                          {isExternal && (
+                            <span className="ml-2 text-[8px] border border-slate-900 px-1">EXT</span>
+                          )}
+                        </td>
+                        <td className="border border-slate-200 px-4 py-2 text-xs text-right">{item.quantity}</td>
+                        <td className="border border-slate-200 px-4 py-2 text-xs text-center uppercase">{item.unit}</td>
+                        <td className="border border-slate-200 px-4 py-2 text-[10px] uppercase">{item.supplier_name || "-"}</td>
+                        <td className="border border-slate-200 px-4 py-2 text-[10px] text-slate-500 italic">{item.notes || " "}</td>
+                        <td className="border border-slate-200 px-4 py-2 text-center">
+                          <div className="w-4 h-4 border border-slate-400 mx-auto"></div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           );
         })}
 
-        <div className="mt-12 grid grid-cols-3 gap-8">
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase mb-16">Disetujui Oleh,</p>
-            <div className="border-t border-slate-900 w-32 mx-auto"></div>
-            <p className="text-[10px] font-bold mt-1 uppercase">( Admin Dapur )</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase mb-16">Diverifikasi Oleh,</p>
-            <div className="border-t border-slate-900 w-32 mx-auto"></div>
-            <p className="text-[10px] font-bold mt-1 uppercase">( Kitchen Lead )</p>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase mb-16">Dibuat Oleh,</p>
-            <div className="border-t border-slate-900 w-32 mx-auto"></div>
-            <p className="text-[10px] font-bold mt-1 uppercase">( Zen Supplier )</p>
-          </div>
-        </div>
-
         <div className="mt-12 text-[9px] text-slate-400 italic text-center border-t border-slate-100 pt-4">
           Dokumen ini digenerate secara otomatis oleh sistem Zen Supplier Management pada {new Date().toLocaleString('id-ID')}.
         </div>
+
       </div>
 
       {/* Sections */}

@@ -795,11 +795,6 @@ export const ProductRegistrationPage: React.FC<
                                 placeholder="0"
                                 className={`w-full pr-3.5 py-2.5 bg-slate-50 border rounded-2xl outline-none transition-all font-extrabold text-sm ${u.is_custom_price ? "border-emerald-200 text-emerald-600 bg-emerald-50/30 focus:border-emerald-500" : "border-slate-200 text-slate-400 opacity-70 focus:border-blue-500"}`}
                               />
-                              {!u.is_custom_price && (
-                                <div className="absolute -top-2 right-3 px-2 py-0.5 bg-blue-100 text-blue-600 text-[8px] font-extrabold rounded-full uppercase tracking-wider shadow-sm z-10 pointer-events-none">
-                                  Auto
-                                </div>
-                              )}
                             </div>
                             <div className="col-span-3">
                               <CurrencyInput

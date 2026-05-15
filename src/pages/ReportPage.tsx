@@ -13,6 +13,7 @@ import {
   Layers,
 } from "lucide-react";
 import type { InvoiceReport, Kitchen } from "../types";
+import { formatIndonesianDate } from "../utils/formatters";
 
 export const ReportPage: React.FC = () => {
   const [reports, setReports] = useState<InvoiceReport[]>([]);
@@ -61,9 +62,9 @@ export const ReportPage: React.FC = () => {
     }
   };
 
-  const selectedReport = useMemo(() => 
+  const selectedReport = useMemo(() =>
     reports.find(r => r.invoice_id === selectedReportId)
-  , [reports, selectedReportId]);
+    , [reports, selectedReportId]);
 
   const groupedReports = useMemo(() => {
     const groups: Map<string, InvoiceReport[]> = new Map();
@@ -125,7 +126,7 @@ export const ReportPage: React.FC = () => {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-2 px-3 border-r border-slate-200">
             <Calendar size={14} className="text-slate-400" />
@@ -158,11 +159,10 @@ export const ReportPage: React.FC = () => {
         <div className="px-8 py-4 bg-white/60 backdrop-blur-md border-b border-slate-200 flex items-center gap-3 overflow-x-auto no-scrollbar">
           <button
             onClick={() => setSelectedKitchenId(null)}
-            className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${
-              selectedKitchenId === null
-                ? "bg-slate-800 text-white shadow-lg shadow-slate-800/20"
-                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-            }`}
+            className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${selectedKitchenId === null
+              ? "bg-slate-800 text-white shadow-lg shadow-slate-800/20"
+              : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              }`}
           >
             Semua Dapur
           </button>
@@ -170,11 +170,10 @@ export const ReportPage: React.FC = () => {
             <button
               key={k.id}
               onClick={() => setSelectedKitchenId(k.id)}
-              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 flex items-center gap-2 ${
-                selectedKitchenId === k.id
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
-                  : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              }`}
+              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 flex items-center gap-2 ${selectedKitchenId === k.id
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+                : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                }`}
             >
               <ChefHat size={12} />
               {k.name}
@@ -214,7 +213,7 @@ export const ReportPage: React.FC = () => {
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <Layers size={14} /> Laporan Terkelompok Per PO
                 </h3>
-                
+
                 {loading ? (
                   <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
                     <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -245,18 +244,17 @@ export const ReportPage: React.FC = () => {
                               </h4>
                               <div className="flex gap-1.5">
                                 {group.map(r => (
-                                  <span key={r.invoice_id} className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
-                                    r.invoice_number.startsWith('ZS') 
-                                      ? 'bg-amber-100 text-amber-700' 
-                                      : 'bg-purple-100 text-purple-700'
-                                  }`}>
+                                  <span key={r.invoice_id} className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${r.invoice_number.startsWith('ZS')
+                                    ? 'bg-amber-100 text-amber-700'
+                                    : 'bg-purple-100 text-purple-700'
+                                    }`}>
                                     {r.invoice_number}
                                   </span>
                                 ))}
                               </div>
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 mt-0.5 uppercase tracking-widest">
-                              <Calendar size={10} /> {group[0].invoice_date}
+                              <Calendar size={10} /> {formatIndonesianDate(group[0].invoice_date)}
                             </p>
                           </div>
                           <div className="text-right">
@@ -273,11 +271,10 @@ export const ReportPage: React.FC = () => {
                             <div
                               key={r.invoice_id}
                               onClick={() => setSelectedReportId(r.invoice_id)}
-                              className={`bg-white p-5 rounded-3xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                                selectedReportId === r.invoice_id
-                                  ? "border-blue-500 ring-4 ring-blue-500/10 shadow-lg"
-                                  : "border-slate-200 hover:border-blue-300 hover:shadow-md"
-                              }`}
+                              className={`bg-white p-5 rounded-3xl border transition-all cursor-pointer group flex flex-col justify-between ${selectedReportId === r.invoice_id
+                                ? "border-blue-500 ring-4 ring-blue-500/10 shadow-lg"
+                                : "border-slate-200 hover:border-blue-300 hover:shadow-md"
+                                }`}
                             >
                               <div>
                                 <div className="flex items-start justify-between mb-3">
@@ -324,17 +321,16 @@ export const ReportPage: React.FC = () => {
           </div>
 
           {/* Detail Slide-in Panel */}
-          <div 
-            className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l border-slate-200 z-50 transition-all duration-500 transform ease-in-out ${
-              selectedReportId ? 'translate-x-0 w-[65%]' : 'translate-x-full w-0'
-            }`}
+          <div
+            className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l border-slate-200 z-50 transition-all duration-500 transform ease-in-out ${selectedReportId ? 'translate-x-0 w-[65%]' : 'translate-x-full w-0'
+              }`}
           >
             {selectedReport && (
               <div className="flex flex-col h-full overflow-hidden">
                 {/* Panel Header */}
                 <div className="px-8 py-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
                   <div className="flex items-center gap-4">
-                    <button 
+                    <button
                       onClick={() => setSelectedReportId(null)}
                       className="p-2 hover:bg-slate-200 rounded-xl text-slate-400 transition-all"
                     >
@@ -348,9 +344,8 @@ export const ReportPage: React.FC = () => {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                           {selectedReport.invoice_number}
                         </p>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                          selectedReport.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${selectedReport.status === 'draft' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+                          }`}>
                           {selectedReport.status}
                         </span>
                       </div>
@@ -358,7 +353,7 @@ export const ReportPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tanggal</p>
-                    <p className="font-black text-slate-800">{selectedReport.invoice_date}</p>
+                    <p className="font-black text-slate-800">{formatIndonesianDate(selectedReport.invoice_date)}</p>
                   </div>
                 </div>
 
@@ -385,16 +380,31 @@ export const ReportPage: React.FC = () => {
                         {selectedReport.items.map((item, idx) => (
                           <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-3 py-4 text-center text-slate-400 font-bold text-xs">{idx + 1}</td>
-                            <td className="px-3 py-4 font-bold text-slate-800 text-xs">{item.product_name}</td>
+                            <td className="px-3 py-4 font-bold text-slate-800 text-xs">
+                              <div className="flex flex-col gap-1">
+                                <span>{item.product_name}</span>
+                                <div className="flex gap-1.5">
+                                  {item.is_manual === 1 && (
+                                    <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[7px] font-black rounded uppercase tracking-wider">
+                                      Tambahan
+                                    </span>
+                                  )}
+                                  {item.jual !== item.original_price && (
+                                    <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[7px] font-black rounded uppercase tracking-wider">
+                                      Modified
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
                             <td className="px-3 py-4 text-center">
                               <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[9px] font-black uppercase">
                                 {item.unit}
                               </span>
                             </td>
                             <td className="px-3 py-4 text-center">
-                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
-                                item.jenis === 'operational' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${item.jenis === 'operational' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
+                                }`}>
                                 {item.jenis === 'operational' ? 'OPS' : 'DAPUR'}
                               </span>
                             </td>

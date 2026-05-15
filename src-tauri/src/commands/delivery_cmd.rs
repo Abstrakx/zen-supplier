@@ -301,9 +301,9 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
             rusqlite::params![inv_id, daily_order_id, kitchen_id, invoice_number, inv_type, delivery_date],
         ).map_err(|e| e.to_string())?;
 
-        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String)> = {
+        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String, Option<String>, Option<String>)> = {
             let mut stmt = tx.prepare(
-                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id 
+                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id, oi.product_id, oi.unit_id
                  FROM order_items oi
                  LEFT JOIN po_sections ps ON oi.po_section_id = ps.id
                  LEFT JOIN products p ON oi.product_id = p.id
@@ -312,7 +312,7 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
                  AND (ps.section_name = 'Harian' OR oi.po_section_id IS NULL)"
             ).map_err(|e| e.to_string())?;
             let rows = stmt.query_map(rusqlite::params![daily_order_id, kitchen_id], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?))
             }).map_err(|e| e.to_string())?;
             rows.filter_map(|r| r.ok()).collect()
         };
@@ -324,15 +324,15 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
         });
 
         let mut total = 0.0;
-        for (pn, q, u, bp, sp, oid) in fetched_items {
+        for (pn, q, u, bp, sp, oid, pid, uid) in fetched_items {
             let sell = sp.unwrap_or(0.0);
             let sub = q * sell;
             total += sub;
             let iid = Uuid::new_v4().to_string();
             tx.execute(
-                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal) 
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub],
+                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id, is_manual, original_price) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub, pid, uid, 0, sell],
             ).map_err(|e| e.to_string())?;
         }
         tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, inv_id]).map_err(|e| e.to_string())?;
@@ -364,14 +364,14 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
             rusqlite::params![inv_id, daily_order_id, kitchen_id, invoice_number, inv_type, delivery_date],
         ).map_err(|e| e.to_string())?;
 
-        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String)> = {
+        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String, Option<String>, Option<String>)> = {
             let mut stmt = tx.prepare(
-                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id 
+                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id, oi.product_id, oi.unit_id 
                  FROM order_items oi
                  WHERE oi.daily_order_id = ?1 AND oi.kitchen_id = ?2 AND oi.po_section_id = ?3"
             ).map_err(|e| e.to_string())?;
             let rows = stmt.query_map(rusqlite::params![daily_order_id, kitchen_id, sec_id], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?))
             }).map_err(|e| e.to_string())?;
             rows.filter_map(|r| r.ok()).collect()
         };
@@ -383,15 +383,15 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
         });
 
         let mut total = 0.0;
-        for (pn, q, u, bp, sp, oid) in fetched_items {
+        for (pn, q, u, bp, sp, oid, pid, uid) in fetched_items {
             let sell = sp.unwrap_or(0.0);
             let sub = q * sell;
             total += sub;
             let iid = Uuid::new_v4().to_string();
             tx.execute(
-                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal) 
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub],
+                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id, is_manual, original_price) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub, pid, uid, 0, sell],
             ).map_err(|e| e.to_string())?;
         }
         tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, inv_id]).map_err(|e| e.to_string())?;
@@ -419,16 +419,16 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
             rusqlite::params![inv_id, daily_order_id, kitchen_id, invoice_number, inv_type, delivery_date],
         ).map_err(|e| e.to_string())?;
 
-        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String)> = {
+        let fetched_items: Vec<(String, f64, String, Option<f64>, Option<f64>, String, Option<String>, Option<String>)> = {
             let mut stmt = tx.prepare(
-                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id 
+                "SELECT oi.product_name, oi.quantity, oi.unit, oi.buy_price, oi.sell_price, oi.id, oi.product_id, oi.unit_id 
                  FROM order_items oi
                  LEFT JOIN products p ON oi.product_id = p.id
                  WHERE oi.daily_order_id = ?1 AND oi.kitchen_id = ?2 
                  AND COALESCE(p.item_type, 'dapur') = 'operational'"
             ).map_err(|e| e.to_string())?;
             let rows = stmt.query_map(rusqlite::params![daily_order_id, kitchen_id], |r| {
-                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?))
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?))
             }).map_err(|e| e.to_string())?;
             rows.filter_map(|r| r.ok()).collect()
         };
@@ -440,15 +440,15 @@ pub fn finalize_delivery_note(state: State<'_, DbState>, note_id: String) -> Res
         });
 
         let mut total = 0.0;
-        for (pn, q, u, bp, sp, oid) in fetched_items {
+        for (pn, q, u, bp, sp, oid, pid, uid) in fetched_items {
             let sell = sp.unwrap_or(0.0);
             let sub = q * sell;
             total += sub;
             let iid = Uuid::new_v4().to_string();
             tx.execute(
-                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal) 
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
-                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub],
+                "INSERT INTO invoice_items (id, invoice_id, order_item_id, product_name, day_name, item_date, quantity, unit, unit_price, buy_price, subtotal, product_id, unit_id, is_manual, original_price) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                rusqlite::params![iid, inv_id, oid, pn, day_name, delivery_date, q, u, sell, bp, sub, pid, uid, 0, sell],
             ).map_err(|e| e.to_string())?;
         }
         tx.execute("UPDATE invoices SET total_amount = ?1 WHERE id = ?2", rusqlite::params![total, inv_id]).map_err(|e| e.to_string())?;

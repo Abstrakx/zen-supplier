@@ -39,6 +39,8 @@ pub struct InvoiceReportItem {
     pub total_invoice: f64,            // sell * qty
     pub total_modal: f64,              // buy * qty
     pub keuntungan_per_bahan: f64,     // profit per row
+    pub is_manual: i32,
+    pub original_price: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -209,10 +211,12 @@ pub fn get_invoice_report(
                     ii.quantity, 
                     COALESCE(ii.buy_price, 0.0), 
                     ii.unit_price,
-                    ii.subtotal
+                    ii.subtotal,
+                    ii.is_manual,
+                    ii.original_price
                 FROM invoice_items ii
                 LEFT JOIN order_items oi ON ii.order_item_id = oi.id
-                LEFT JOIN products p ON oi.product_id = p.id
+                LEFT JOIN products p ON (oi.product_id = p.id OR ii.product_id = p.id)
                 WHERE ii.invoice_id = ?
             ").map_err(|e| e.to_string())?;
 
@@ -234,6 +238,8 @@ pub fn get_invoice_report(
                     total_invoice: total_item_inv,
                     total_modal: total_item_modal,
                     keuntungan_per_bahan: total_item_inv - total_item_modal,
+                    is_manual: row.get::<_, Option<i32>>(7)?.unwrap_or(0),
+                    original_price: row.get::<_, Option<f64>>(8)?.unwrap_or(sell),
                 })
             }).map_err(|e| e.to_string())?;
 

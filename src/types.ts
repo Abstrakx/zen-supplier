@@ -188,6 +188,8 @@ export interface InvoiceItem {
   buy_price: number | null;
   subtotal: number;
   has_margin_warning: boolean;
+  is_manual: number;
+  original_price: number;
   product_id: string | null;
   unit_id: string | null;
 }
@@ -233,6 +235,8 @@ export interface InvoiceReportItem {
   total_invoice: number;
   total_modal: number;
   keuntungan_per_bahan: number;
+  is_manual: number;
+  original_price: number;
 }
 
 export interface InvoiceReport {
