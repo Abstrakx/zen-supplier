@@ -11,7 +11,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
-import type { Invoice, InvoiceDetail } from "../types";
+import type { Invoice, InvoiceDetail, Product, ProductUnit } from "../types";
 import Swal from "sweetalert2";
 
 export const InvoicePage: React.FC = () => {
@@ -21,10 +21,21 @@ export const InvoicePage: React.FC = () => {
     null,
   );
   const [search, setSearch] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     loadInvoices();
+    loadProducts();
   }, []);
+
+  const loadProducts = async () => {
+    try {
+      const data = await invoke<Product[]>("get_products");
+      setProducts(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadInvoices = async () => {
     try {
@@ -46,13 +57,23 @@ export const InvoicePage: React.FC = () => {
       });
       setSelectedInvoice(detail);
     } catch (e) {
-      alert(String(e));
+      Swal.fire("Gagal", String(e), "error");
     }
   };
 
   const finalize = async (id: string) => {
-    if (!confirm("Finalisasi invoice? Harga jual akan di-update ke katalog."))
-      return;
+    const result = await Swal.fire({
+      title: "Finalisasi Invoice?",
+      text: "Harga jual akan di-update ke katalog produk.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#10b981",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Finalisasi",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
     try {
       await invoke("finalize_invoice", { invoiceId: id });
       loadInvoices();
@@ -73,7 +94,18 @@ export const InvoicePage: React.FC = () => {
   };
 
   const deleteItem = async (itemId: string) => {
-    if (!confirm("Hapus item dari invoice?")) return;
+    const result = await Swal.fire({
+      title: "Hapus Item?",
+      text: "Apakah Anda yakin ingin menghapus item ini dari invoice?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Hapus",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
     try {
       await invoke("delete_invoice_item", { itemId });
       if (selectedInvoice) viewDetail(selectedInvoice.invoice.id);
@@ -83,46 +115,50 @@ export const InvoicePage: React.FC = () => {
     }
   };
 
-  const addManualItem = async () => {
-    if (!selectedInvoice) return;
-    const { value: formValues } = await Swal.fire({
-      title: 'Tambah Item Manual',
-      html:
-        '<input id="swal-name" class="swal2-input" placeholder="Nama Produk">' +
-        '<input id="swal-qty" class="swal2-input" placeholder="Qty" type="number">' +
-        '<input id="swal-unit" class="swal2-input" placeholder="Satuan (misal: KG)">' +
-        '<input id="swal-price" class="swal2-input" placeholder="Harga Satuan" type="number">',
-      focusConfirm: false,
-      preConfirm: () => {
-        return [
-          (document.getElementById('swal-name') as HTMLInputElement).value,
-          (document.getElementById('swal-qty') as HTMLInputElement).value,
-          (document.getElementById('swal-unit') as HTMLInputElement).value,
-          (document.getElementById('swal-price') as HTMLInputElement).value
-        ]
-      }
-    });
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<ProductUnit | null>(null);
+  const [addQty, setAddQty] = useState(1);
+  const [addPrice, setAddPrice] = useState(0);
 
-    if (formValues) {
-      const [productName, qty, unit, price] = formValues;
-      if (!productName || !qty || !unit || !price) {
-        Swal.fire("Gagal", "Semua field harus diisi", "error");
-        return;
-      }
-      try {
-        await invoke("add_manual_invoice_item", {
-          invoiceId: selectedInvoice.invoice.id,
-          productName,
-          quantity: parseFloat(qty),
-          unit,
-          unitPrice: parseFloat(price)
-        });
-        viewDetail(selectedInvoice.invoice.id);
-        loadInvoices();
-      } catch (e) {
-        Swal.fire("Gagal", String(e), "error");
-      }
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  ).slice(0, 5);
+
+  const handleAddProduct = async () => {
+    if (!selectedInvoice || !selectedProduct || !selectedUnit) return;
+    try {
+      await invoke("add_manual_invoice_item", {
+        invoiceId: selectedInvoice.invoice.id,
+        productName: selectedProduct.name,
+        quantity: addQty,
+        unit: selectedUnit.unit_name,
+        unitPrice: addPrice,
+        productId: selectedProduct.id,
+        unitId: selectedUnit.id
+      });
+      viewDetail(selectedInvoice.invoice.id);
+      loadInvoices();
+      setShowAddItem(false);
+      resetAddForm();
+    } catch (e) {
+      Swal.fire("Gagal", String(e), "error");
     }
+  };
+
+  const resetAddForm = () => {
+    setSelectedProduct(null);
+    setSelectedUnit(null);
+    setAddQty(1);
+    setAddPrice(0);
+    setProductSearch("");
+  };
+
+  const selectProduct = (p: Product) => {
+    setSelectedProduct(p);
+    setSelectedUnit(p.units[0]);
+    setAddPrice(p.latest_sell_price || 0);
   };
 
   const filteredInvoices = invoices.filter(
@@ -289,6 +325,116 @@ export const InvoicePage: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 bg-slate-100/30">
+              {showAddItem && (
+                <div className="mb-8 bg-white border-2 border-emerald-100 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                  <h4 className="text-sm font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+                    <Plus size={16} className="text-emerald-500" />
+                    Tambah Item dari Katalog
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="relative">
+                      <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Cari Produk</label>
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                          className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold"
+                          placeholder="Nama barang..."
+                          value={productSearch}
+                          onChange={(e) => {
+                            setProductSearch(e.target.value);
+                            setSelectedProduct(null);
+                          }}
+                        />
+                      </div>
+                      
+                      {!selectedProduct && productSearch.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                          {filteredProducts.map(p => (
+                            <button
+                              key={p.id}
+                              onClick={() => selectProduct(p)}
+                              className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex justify-between items-center group"
+                            >
+                              <div>
+                                <div className="text-sm font-bold text-slate-700 group-hover:text-emerald-600 transition-colors">{p.name}</div>
+                                <div className="text-[10px] text-slate-400 uppercase font-bold">{p.category} • {p.base_unit}</div>
+                              </div>
+                              <Plus size={14} className="text-slate-300 group-hover:text-emerald-500" />
+                            </button>
+                          ))}
+                          {filteredProducts.length === 0 && (
+                            <div className="px-4 py-3 text-sm text-slate-400 italic">Produk tidak ditemukan</div>
+                          )}
+                        </div>
+                      )}
+
+                      {selectedProduct && (
+                        <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-black text-emerald-900">{selectedProduct.name}</div>
+                            <div className="text-[10px] font-bold text-emerald-600 uppercase">{selectedProduct.base_unit}</div>
+                          </div>
+                          <button onClick={() => setSelectedProduct(null)} className="p-1 hover:bg-emerald-200 rounded text-emerald-600">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Satuan</label>
+                        <select 
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                          value={selectedUnit?.id || ""}
+                          onChange={(e) => setSelectedUnit(selectedProduct?.units.find((u: ProductUnit) => u.id === e.target.value) || null)}
+                          disabled={!selectedProduct}
+                        >
+                          {selectedProduct?.units.map((u: ProductUnit) => (
+                            <option key={u.id} value={u.id}>{u.unit_name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Qty</label>
+                        <input 
+                          type="number"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                          value={addQty}
+                          onChange={(e) => setAddQty(parseFloat(e.target.value))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Harga</label>
+                        <input 
+                          type="number"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-sm font-bold h-[42px]"
+                          value={addPrice}
+                          onChange={(e) => setAddPrice(parseFloat(e.target.value))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex justify-end gap-3">
+                    <button 
+                      onClick={() => setShowAddItem(false)}
+                      className="px-6 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-800"
+                    >
+                      Batal
+                    </button>
+                    <button 
+                      onClick={handleAddProduct}
+                      disabled={!selectedProduct}
+                      className="bg-emerald-600 text-white px-8 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-200 disabled:opacity-50 disabled:shadow-none hover:bg-emerald-700 active:scale-95 transition-all"
+                    >
+                      Konfirmasi Tambah
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white border border-slate-200 p-12 rounded-xl shadow-sm text-black font-mono">
                 <div className="text-center mb-10 border-b-2 border-black pb-6">
                   <h1 className="text-3xl font-black tracking-tighter">
@@ -389,18 +535,18 @@ export const InvoicePage: React.FC = () => {
                             <div className="flex items-center justify-end gap-1">
                               <input
                                 type="number"
-                                className="w-12 text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500"
+                                className="w-12 text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500 font-black"
                                 defaultValue={item.quantity}
                                 onBlur={(e) => updateItem(item.id, parseFloat(e.target.value), item.unit_price)}
                               />
-                              <span className="text-[9px] text-gray-400">
+                              <span className="text-[10px] font-black text-slate-400 uppercase">
                                 {item.unit}
                               </span>
                             </div>
                           ) : (
                             <>
                               {item.quantity}{" "}
-                              <span className="text-[9px] text-gray-400 ml-1">
+                              <span className="text-[10px] font-black text-slate-400 uppercase ml-1">
                                 {item.unit}
                               </span>
                             </>
@@ -490,10 +636,10 @@ export const InvoicePage: React.FC = () => {
               <div>
                 {selectedInvoice.invoice.status === "draft" && (
                   <button
-                    onClick={addManualItem}
+                    onClick={() => setShowAddItem(!showAddItem)}
                     className="bg-emerald-50 text-emerald-600 px-6 py-2.5 rounded-xl font-black text-[10px] shadow-sm hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2 uppercase tracking-widest"
                   >
-                    <Plus size={14} /> Tambah Item Manual
+                    <Plus size={14} /> {showAddItem ? "Batal Tambah" : "Tambah Item Catalog"}
                   </button>
                 )}
               </div>

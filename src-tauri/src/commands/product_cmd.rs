@@ -71,6 +71,17 @@ pub struct UpdateProductPayload {
     pub payload: CreateProductPayload,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct BulkPriceUpdateItem {
+    pub product_id: String,
+    pub product_name: String,
+    pub unit_id: Option<String>,
+    pub unit_name: Option<String>,
+    pub price_type: String, // 'buy' or 'sell'
+    pub old_price: Option<f64>,
+    pub new_price: f64,
+}
+
 // ═══ COMMANDS ═══
 
 #[tauri::command]
@@ -526,4 +537,37 @@ pub fn get_all_units(state: State<'_, DbState>) -> Result<Vec<String>, String> {
         }
     }
     Ok(units)
+}
+
+#[tauri::command]
+pub fn bulk_update_prices(state: State<'_, DbState>, payload: Vec<BulkPriceUpdateItem>) -> Result<usize, String> {
+    let mut conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut updated_count = 0;
+
+    for item in payload {
+        // 1. Record in price_history (standard way)
+        record_price_internal(&tx, &item.product_id, &item.price_type, item.new_price, item.unit_id.as_deref())?;
+
+        // 2. Log into pending_price_changes
+        let id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO pending_price_changes (id, product_id, product_name, unit_id, unit_name, price_type, old_price, new_price) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![
+                id, 
+                item.product_id, 
+                item.product_name, 
+                item.unit_id, 
+                item.unit_name, 
+                item.price_type, 
+                item.old_price, 
+                item.new_price
+            ],
+        ).map_err(|e| e.to_string())?;
+
+        updated_count += 1;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(updated_count)
 }

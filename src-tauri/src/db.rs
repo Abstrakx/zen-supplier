@@ -192,8 +192,85 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
             unit_price REAL NOT NULL,
             buy_price REAL,
             subtotal REAL NOT NULL,
+            product_id TEXT,
+            unit_id TEXT,
             FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
-            FOREIGN KEY (order_item_id) REFERENCES order_items(id)
+            FOREIGN KEY (order_item_id) REFERENCES order_items(id),
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (unit_id) REFERENCES product_units(id)
+        );
+
+        -- ═══ STORES (TOKO) ═══
+
+        CREATE TABLE IF NOT EXISTS stores (
+            id      TEXT PRIMARY KEY,
+            name    TEXT NOT NULL,
+            code    TEXT UNIQUE,
+            address TEXT,
+            pic_name  TEXT,
+            pic_phone TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+
+        -- ═══ NOTA BREAKDOWN ═══
+
+        CREATE TABLE IF NOT EXISTS nota_breakdown (
+            id              TEXT PRIMARY KEY,
+            nota_number     TEXT NOT NULL UNIQUE,
+            purchase_date   TEXT NOT NULL,
+            store_id        TEXT,
+            store_name      TEXT,
+            status          TEXT DEFAULT 'draft',
+            notes           TEXT,
+            created_at      TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (store_id) REFERENCES stores(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS nota_sections (
+            id              TEXT PRIMARY KEY,
+            nota_id         TEXT NOT NULL,
+            dapur_id        TEXT,
+            dapur_name      TEXT,
+            section_label   TEXT NOT NULL,
+            sort_order      INTEGER DEFAULT 0,
+            FOREIGN KEY (nota_id) REFERENCES nota_breakdown(id) ON DELETE CASCADE,
+            FOREIGN KEY (dapur_id) REFERENCES kitchens(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS nota_items (
+            id              TEXT PRIMARY KEY,
+            nota_id         TEXT NOT NULL,
+            section_id      TEXT,
+            product_name    TEXT NOT NULL,
+            quantity        REAL NOT NULL DEFAULT 1,
+            unit            TEXT NOT NULL DEFAULT 'KG',
+            buy_price       REAL,
+            subtotal        REAL,
+            notes           TEXT,
+            product_id      TEXT,
+            unit_id         TEXT,
+            FOREIGN KEY (nota_id) REFERENCES nota_breakdown(id) ON DELETE CASCADE,
+            FOREIGN KEY (section_id) REFERENCES nota_sections(id) ON DELETE CASCADE
+        );
+
+        -- ═══ BULK PRICE UPDATER ═══
+
+        CREATE TABLE IF NOT EXISTS pending_price_changes (
+            id           TEXT PRIMARY KEY,
+            product_id   TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            unit_id      TEXT,
+            unit_name    TEXT,
+            price_type   TEXT NOT NULL,
+            old_price    REAL,
+            new_price    REAL NOT NULL,
+            is_reviewed  INTEGER DEFAULT 0,
+            submitted_at TEXT DEFAULT (datetime('now')),
+            reviewed_at  TEXT,
+            notes        TEXT,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES product_units(id)
         );
         ",
     )?;
@@ -223,8 +300,82 @@ pub fn init_db(app_handle: &tauri::AppHandle) -> Result<Connection> {
     // Migration for neto column in products
     let _ = conn.execute("ALTER TABLE products ADD COLUMN neto TEXT", []);
 
+    // Migration for invoice_items
+    let _ = conn.execute("ALTER TABLE invoice_items ADD COLUMN product_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE invoice_items ADD COLUMN unit_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE nota_items ADD COLUMN product_id TEXT", []);
+    let _ = conn.execute("ALTER TABLE nota_items ADD COLUMN unit_id TEXT", []);
+
     // Clean up item_type spelling
     let _ = conn.execute("UPDATE products SET item_type = 'operational' WHERE item_type = 'operasional'", []);
+
+    // Create new tables if they don't exist (for existing DBs)
+    let _ = conn.execute_batch(
+        "
+        CREATE TABLE IF NOT EXISTS stores (
+            id      TEXT PRIMARY KEY,
+            name    TEXT NOT NULL,
+            code    TEXT UNIQUE,
+            address TEXT,
+            pic_name  TEXT,
+            pic_phone TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS nota_breakdown (
+            id              TEXT PRIMARY KEY,
+            nota_number     TEXT NOT NULL UNIQUE,
+            purchase_date   TEXT NOT NULL,
+            store_id        TEXT,
+            store_name      TEXT,
+            status          TEXT DEFAULT 'draft',
+            notes           TEXT,
+            created_at      TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (store_id) REFERENCES stores(id)
+        );
+        CREATE TABLE IF NOT EXISTS nota_sections (
+            id              TEXT PRIMARY KEY,
+            nota_id         TEXT NOT NULL,
+            dapur_id        TEXT,
+            dapur_name      TEXT,
+            section_label   TEXT NOT NULL,
+            sort_order      INTEGER DEFAULT 0,
+            FOREIGN KEY (nota_id) REFERENCES nota_breakdown(id) ON DELETE CASCADE,
+            FOREIGN KEY (dapur_id) REFERENCES kitchens(id)
+        );
+        CREATE TABLE IF NOT EXISTS nota_items (
+            id              TEXT PRIMARY KEY,
+            nota_id         TEXT NOT NULL,
+            section_id      TEXT,
+            product_name    TEXT NOT NULL,
+            quantity        REAL NOT NULL DEFAULT 1,
+            unit            TEXT NOT NULL DEFAULT 'KG',
+            buy_price       REAL,
+            subtotal        REAL,
+            notes           TEXT,
+            product_id      TEXT,
+            unit_id         TEXT,
+            FOREIGN KEY (nota_id) REFERENCES nota_breakdown(id) ON DELETE CASCADE,
+            FOREIGN KEY (section_id) REFERENCES nota_sections(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS pending_price_changes (
+            id           TEXT PRIMARY KEY,
+            product_id   TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            unit_id      TEXT,
+            unit_name    TEXT,
+            price_type   TEXT NOT NULL,
+            old_price    REAL,
+            new_price    REAL NOT NULL,
+            is_reviewed  INTEGER DEFAULT 0,
+            submitted_at TEXT DEFAULT (datetime('now')),
+            reviewed_at  TEXT,
+            notes        TEXT,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES product_units(id)
+        );
+        "
+    );
 
     Ok(conn)
 }
@@ -237,6 +388,8 @@ pub fn reset_database(state: tauri::State<'_, crate::commands::DbState>) -> Resu
     let _ = conn.execute("PRAGMA foreign_keys = OFF", []);
 
     let tables = [
+        "pending_price_changes",
+        "nota_items", "nota_sections", "nota_breakdown", "stores",
         "invoice_items", "invoices",
         "delivery_note_items", "delivery_notes",
         "order_items", "daily_orders",

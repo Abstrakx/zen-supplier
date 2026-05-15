@@ -22,6 +22,9 @@ import "@fontsource/montserrat/400-italic.css"; // Italic
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/700.css";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { NotaBreakdownPage } from "./pages/NotaBreakdownPage";
+import { NotaBreakdownDetailPage } from "./pages/NotaBreakdownDetailPage";
+import { BulkPricePage } from "./pages/BulkPricePage";
 
 export default function App() {
   const [activeNav, setActiveNav] = useState<NavPage>("dashboard");
@@ -90,6 +93,24 @@ export default function App() {
         return <SettingsPage />;
       case "koneksi":
         return <ConnectionPage />;
+      case "nota-breakdown":
+        return (
+          <NotaBreakdownPage
+            onOpenDetail={(id: string) => {
+              setSelectedId(id);
+              setActiveNav("nota-breakdown-detail");
+            }}
+          />
+        );
+      case "nota-breakdown-detail":
+        return (
+          <NotaBreakdownDetailPage
+            notaId={selectedId || ""}
+            onBack={() => setActiveNav("nota-breakdown")}
+          />
+        );
+      case "bulk-price":
+        return <BulkPricePage />;
       default:
         return <DashboardPage onNavigate={setActiveNav} />;
     }

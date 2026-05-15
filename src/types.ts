@@ -11,6 +11,17 @@ export interface Supplier {
   created_at: string | null;
 }
 
+export interface Store {
+  id: string;
+  name: string;
+  code: string | null;
+  address: string | null;
+  pic_name: string | null;
+  pic_phone: string | null;
+  is_active: boolean;
+  created_at: string | null;
+}
+
 export interface Kitchen {
   id: string;
   code: string;
@@ -177,6 +188,8 @@ export interface InvoiceItem {
   buy_price: number | null;
   subtotal: number;
   has_margin_warning: boolean;
+  product_id: string | null;
+  unit_id: string | null;
 }
 
 export interface InvoiceDetail {
@@ -237,6 +250,76 @@ export interface InvoiceReport {
   items: InvoiceReportItem[];
 }
 
+// ═══ NOTA BREAKDOWN ═══
+
+export interface NotaBreakdown {
+  id: string;
+  nota_number: string;
+  purchase_date: string;
+  store_id: string | null;
+  store_name: string | null;
+  status: string;
+  notes: string | null;
+  created_at: string | null;
+  section_count: number;
+  item_count: number;
+}
+
+export interface NotaSection {
+  id: string;
+  nota_id: string;
+  dapur_id: string | null;
+  dapur_name: string | null;
+  section_label: string;
+  sort_order: number;
+}
+
+export interface NotaItem {
+  id: string;
+  nota_id: string;
+  section_id: string | null;
+  product_name: string;
+  quantity: number;
+  unit: string;
+  buy_price: number | null;
+  subtotal: number | null;
+  notes: string | null;
+  product_id: string | null;
+  unit_id: string | null;
+}
+
+export interface NotaBreakdownDetail {
+  nota: NotaBreakdown;
+  sections: NotaSection[];
+  items: NotaItem[];
+}
+
+// ═══ BULK PRICE ═══
+
+export interface BulkPriceUpdateItem {
+  product_id: string;
+  product_name: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  price_type: string;
+  old_price: number | null;
+  new_price: number;
+}
+
+export interface BulkPriceRow {
+  product_id: string;
+  product_name: string;
+  unit_id: string | null;
+  unit_name: string | null;
+  current_buy: number | null;
+  new_buy: number | null;
+  current_sell: number | null;
+  new_sell: number | null;
+  isDirtyBuy?: boolean;
+  isDirtySell?: boolean;
+  isPending?: boolean;
+}
+
 // ═══ NAV ═══
 
 export type NavPage =
@@ -250,7 +333,10 @@ export type NavPage =
   | 'product-registration'
   | 'reports'
   | 'settings'
-  | 'koneksi';
+  | 'koneksi'
+  | 'nota-breakdown'
+  | 'nota-breakdown-detail'
+  | 'bulk-price';
 
 export interface UnitConversionPayload {
   custom_unit_name: string;

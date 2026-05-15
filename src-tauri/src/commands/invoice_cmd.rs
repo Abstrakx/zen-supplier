@@ -31,6 +31,8 @@ pub struct InvoiceItem {
     pub buy_price: Option<f64>,
     pub subtotal: f64,
     pub has_margin_warning: bool,
+    pub product_id: Option<String>,
+    pub unit_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -140,12 +142,12 @@ pub fn get_invoice_detail(state: State<'_, DbState>, invoice_id: String) -> Resu
         [&invoice_id], |row| Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)? })
     ).map_err(|e| e.to_string())?;
 
-    let mut stmt = conn.prepare("SELECT id,product_name,day_name,item_date,quantity,unit,unit_price,buy_price,subtotal FROM invoice_items WHERE invoice_id=?1 ORDER BY product_name").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id,product_name,day_name,item_date,quantity,unit,unit_price,buy_price,subtotal,product_id,unit_id FROM invoice_items WHERE invoice_id=?1 ORDER BY product_name").map_err(|e| e.to_string())?;
     let rows = stmt.query_map([&invoice_id], |r| {
         let up: f64 = r.get(6)?;
         let bp: Option<f64> = r.get(7)?;
         let warn = bp.map(|b| up < b).unwrap_or(false);
-        Ok(InvoiceItem { id: r.get(0)?, product_name: r.get(1)?, day_name: r.get(2)?, item_date: r.get(3)?, quantity: r.get(4)?, unit: r.get(5)?, unit_price: up, buy_price: bp, subtotal: r.get(8)?, has_margin_warning: warn })
+        Ok(InvoiceItem { id: r.get(0)?, product_name: r.get(1)?, day_name: r.get(2)?, item_date: r.get(3)?, quantity: r.get(4)?, unit: r.get(5)?, unit_price: up, buy_price: bp, subtotal: r.get(8)?, has_margin_warning: warn, product_id: r.get(9)?, unit_id: r.get(10)? })
     }).map_err(|e| e.to_string())?;
     let mut items = Vec::new();
     for r in rows { if let Ok(i) = r { items.push(i); } }
@@ -157,18 +159,30 @@ pub fn finalize_invoice(state: State<'_, DbState>, invoice_id: String) -> Result
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let price_updates: Vec<(f64, String)> = {
-        let mut stmt = tx.prepare("SELECT ii.unit_price, oi.product_id FROM invoice_items ii JOIN order_items oi ON ii.order_item_id = oi.id WHERE ii.invoice_id = ?1 AND oi.product_id IS NOT NULL").map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([&invoice_id], |r| Ok((r.get::<_,f64>(0)?, r.get::<_,String>(1)?))).map_err(|e| e.to_string())?;
+    let price_updates: Vec<(f64, String, Option<String>)> = {
+        let mut stmt = tx.prepare("
+            SELECT ii.unit_price, oi.product_id, 
+                   (SELECT id FROM product_units WHERE product_id = oi.product_id AND is_base_unit = 1 LIMIT 1) as unit_id
+            FROM invoice_items ii 
+            JOIN order_items oi ON ii.order_item_id = oi.id 
+            WHERE ii.invoice_id = ?1 AND oi.product_id IS NOT NULL
+            
+            UNION ALL
+            
+            SELECT ii.unit_price, ii.product_id, ii.unit_id
+            FROM invoice_items ii
+            WHERE ii.invoice_id = ?1 AND ii.order_item_id IS NULL AND ii.product_id IS NOT NULL
+        ").map_err(|e| e.to_string())?;
+        let rows = stmt.query_map([&invoice_id], |r| Ok((r.get::<_,f64>(0)?, r.get::<_,String>(1)?, r.get::<_,Option<String>>(2)?))).map_err(|e| e.to_string())?;
         rows.filter_map(|r| r.ok()).collect()
     };
 
     for item in price_updates {
-        let (sell_price, product_id) = item;
+        let (sell_price, product_id, unit_id) = item;
         if sell_price > 0.0 {
             let pid = Uuid::new_v4().to_string();
-            tx.execute("INSERT INTO price_history (id,product_id,price_type,price,notes) VALUES(?1,?2,'sell',?3,'Updated from invoice finalization')",
-                rusqlite::params![pid, product_id, sell_price]).map_err(|e| e.to_string())?;
+            tx.execute("INSERT INTO price_history (id,product_id,price_type,price,unit_id,notes) VALUES(?1,?2,'sell',?3,?4,'Updated from invoice finalization')",
+                rusqlite::params![pid, product_id, sell_price, unit_id]).map_err(|e| e.to_string())?;
         }
     }
 
@@ -233,7 +247,7 @@ pub fn delete_invoice_item(state: State<'_, DbState>, item_id: String) -> Result
 }
 
 #[tauri::command]
-pub fn add_manual_invoice_item(state: State<'_, DbState>, invoice_id: String, product_name: String, quantity: f64, unit: String, unit_price: f64) -> Result<(), String> {
+pub fn add_manual_invoice_item(state: State<'_, DbState>, invoice_id: String, product_name: String, quantity: f64, unit: String, unit_price: f64, product_id: Option<String>, unit_id: Option<String>) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
@@ -241,9 +255,9 @@ pub fn add_manual_invoice_item(state: State<'_, DbState>, invoice_id: String, pr
     let subtotal = quantity * unit_price;
     
     tx.execute(
-        "INSERT INTO invoice_items (id, invoice_id, product_name, quantity, unit, unit_price, subtotal) 
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        rusqlite::params![id, invoice_id, product_name, quantity, unit, unit_price, subtotal],
+        "INSERT INTO invoice_items (id, invoice_id, product_name, quantity, unit, unit_price, subtotal, product_id, unit_id) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        rusqlite::params![id, invoice_id, product_name, quantity, unit, unit_price, subtotal, product_id, unit_id],
     ).map_err(|e| e.to_string())?;
 
     let total: f64 = tx.query_row(

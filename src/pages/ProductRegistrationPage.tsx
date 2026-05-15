@@ -90,7 +90,7 @@ export const ProductRegistrationPage: React.FC<
       setItemType(editingProduct.item_type as any || "dapur");
       setBuyPrice(editingProduct.latest_buy_price || "");
       setSellPrice(editingProduct.latest_sell_price || "");
-      
+
       const units: AdditionalUnit[] = (editingProduct.units || [])
         .filter(u => !u.is_base_unit)
         .map(u => ({
@@ -186,7 +186,12 @@ export const ProductRegistrationPage: React.FC<
 
   const handleSave = async () => {
     if (!name.trim() || !baseUnit.trim()) {
-      alert("Nama Produk dan Satuan Dasar wajib diisi!");
+      Swal.fire({
+        title: "Data Tidak Lengkap",
+        text: "Nama Produk dan Satuan Dasar wajib diisi!",
+        icon: "warning",
+        confirmButtonColor: "#2563eb",
+      });
       return;
     }
 
@@ -675,20 +680,20 @@ export const ProductRegistrationPage: React.FC<
                     <button
                       onClick={() => setItemType("dapur")}
                       className={`flex-1 py-3 px-4 rounded-2xl text-xs font-extrabold uppercase tracking-widest border-2 transition-all ${itemType === "dapur"
-                          ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
-                          : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
+                        ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                        : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
                         }`}
                     >
-                      🍳 Bahan Dapur
+                      Bahan Dapur
                     </button>
                     <button
                       onClick={() => setItemType("operational")}
                       className={`flex-1 py-3 px-4 rounded-2xl text-xs font-extrabold uppercase tracking-widest border-2 transition-all ${itemType === "operational"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
-                          : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
+                        ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                        : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
                         }`}
                     >
-                      🔧 Operasional
+                      Operasional
                     </button>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-3 font-semibold">

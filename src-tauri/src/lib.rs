@@ -34,6 +34,7 @@ pub fn run() {
             commands::product_cmd::record_price,
             commands::product_cmd::get_categories,
             commands::product_cmd::get_all_units,
+            commands::product_cmd::bulk_update_prices,
 
             // Orders
             commands::order_cmd::create_daily_order,
@@ -72,6 +73,24 @@ pub fn run() {
             commands::report_cmd::get_margin_report,
             commands::report_cmd::get_daily_summary,
             commands::report_cmd::get_invoice_report,
+            // Stores
+            commands::store_cmd::get_stores,
+            commands::store_cmd::create_store,
+            commands::store_cmd::update_store,
+            commands::store_cmd::delete_store,
+            // Nota Breakdown
+            commands::nota_cmd::get_nota_breakdowns,
+            commands::nota_cmd::get_nota_breakdown_detail,
+            commands::nota_cmd::create_nota_breakdown,
+            commands::nota_cmd::update_nota_breakdown,
+            commands::nota_cmd::delete_nota_breakdown,
+            commands::nota_cmd::add_nota_section,
+            commands::nota_cmd::update_nota_section,
+            commands::nota_cmd::delete_nota_section,
+            commands::nota_cmd::add_nota_item,
+            commands::nota_cmd::update_nota_item,
+            commands::nota_cmd::delete_nota_item,
+            commands::nota_cmd::finalize_nota,
             // Database
             db::reset_database,
         ])

@@ -10,6 +10,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import Swal from "sweetalert2";
 
 type TabType = "import" | "system";
 
@@ -178,20 +179,29 @@ const SystemSettings: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
 
   const handleReset = async () => {
-    if (
-      !confirm(
-        "PERINGATAN KRITIS: Seluruh data (koneksi, katalog, order, invoice) akan DIHAPUS PERMANEN. Lanjutkan?",
-      )
-    ) return;
+    const result = await Swal.fire({
+      title: "Peringatan Kritis!",
+      text: "Seluruh data (koneksi, katalog, order, invoice) akan DIHAPUS PERMANEN. Lanjutkan?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Hapus Semua",
+      cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
 
     setResetLoading(true);
     try {
       await invoke("reset_database");
-      alert(
-        "Database telah direset. Silakan RESTART aplikasi untuk memuat skema baru.",
-      );
+      await Swal.fire({
+        title: "Berhasil",
+        text: "Database telah direset. Silakan RESTART aplikasi untuk memuat skema baru.",
+        icon: "success",
+      });
     } catch (e) {
-      alert("Gagal mereset database: " + String(e));
+      Swal.fire("Gagal", "Gagal mereset database: " + String(e), "error");
     } finally {
       setResetLoading(false);
     }

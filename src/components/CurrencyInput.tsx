@@ -7,6 +7,7 @@ interface CurrencyInputProps {
   className?: string;
   prefix?: string;
   disabled?: boolean;
+  onBlur?: () => void;
 }
 
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({
@@ -16,6 +17,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   className = "",
   prefix = "Rp",
   disabled = false,
+  onBlur,
 }) => {
   const [displayValue, setDisplayValue] = useState("");
 
@@ -67,6 +69,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
         placeholder={placeholder}
         value={displayValue}
         onChange={handleChange}
+        onBlur={onBlur}
         onWheel={(e) => (e.target as HTMLInputElement).blur()}
       />
     </div>

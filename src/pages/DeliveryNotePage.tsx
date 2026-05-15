@@ -59,7 +59,7 @@ export const DeliveryNotePage: React.FC = () => {
       );
       setSelectedNote(detail);
     } catch (e) {
-      alert(String(e));
+      Swal.fire("Gagal", String(e), "error");
     }
   };
 

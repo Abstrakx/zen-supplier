@@ -10,6 +10,8 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  FileStack,
+  Tag,
 } from "lucide-react";
 import appIcon from "../assets/app-icon.png";
 import type { NavPage } from "../types";
@@ -38,13 +40,10 @@ const navItems: NavItem[] = [
     label: "PO Harian",
     accent: "blue",
   },
-  {
-    id: "delivery-notes",
-    icon: Truck,
-    label: "Surat Jalan",
-    accent: "emerald",
-  },
+  { id: "delivery-notes", icon: Truck, label: "Surat Jalan", accent: "emerald" },
   { id: "invoices", icon: Receipt, label: "Invoice", accent: "amber" },
+  { id: "nota-breakdown", icon: FileStack, label: "Nota Breakdown", accent: "violet" },
+  { id: "bulk-price", icon: Tag, label: "Harga Massal", accent: "orange" },
   { id: "reports", icon: BarChart3, label: "Laporan" },
   { id: "koneksi", icon: Users, label: "Koneksi", accent: "indigo" },
   { id: "settings", icon: Settings, label: "Pengaturan" },
@@ -64,11 +63,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div
         className={`${collapsed ? "px-3 py-5" : "px-5 py-5"} border-b border-white/6 flex items-center gap-3`}
       >
-        <div className="p-2 bg-linear-to-br from-emerald-500/20 to-green-500/20 rounded-xl text-emerald-400 shrink-0">
+        <div className="bg-emerald-500/10 rounded-xl shadow-[0_0_8px_rgba(16,185,129,0.3)]">
           <img
             src={appIcon}
             alt="Zen Supplier"
-            className={`${collapsed ? "w-8 h-8" : "w-10 h-10"} object-contain`}
+            className={`${collapsed ? "w-8 h-8" : "w-12 h-12"} object-contain`}
           />
         </div>
         {!collapsed && (
@@ -88,7 +87,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {navItems.map((item) => {
           const isActive =
             activeNav === item.id ||
-            (activeNav === "daily-order-detail" && item.id === "daily-orders");
+            (activeNav === "daily-order-detail" && item.id === "daily-orders") ||
+            (activeNav === "nota-breakdown-detail" && item.id === "nota-breakdown");
           return (
             <button
               key={item.id}

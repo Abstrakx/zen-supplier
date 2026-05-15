@@ -7,34 +7,32 @@ import {
   Plus,
   Edit2,
   Trash2,
-  X,
-  Save,
   AlertCircle,
+  Store as StoreIcon,
 } from "lucide-react";
-import type { Kitchen, Supplier } from "../types";
+import type { Kitchen, Supplier, Store } from "../types";
 import { SupplierModal } from "../components/SupplierModal";
+import { KitchenModal } from "../components/KitchenModal";
+import { StoreModal } from "../components/StoreModal";
+import Swal from "sweetalert2";
 
 export const ConnectionPage: React.FC = () => {
   const [kitchens, setKitchens] = useState<Kitchen[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  type TabType = "kitchens" | "suppliers";
+  type TabType = "kitchens" | "suppliers" | "stores";
   const [activeTab, setActiveTab] = useState<TabType>("kitchens");
 
   // Modal states
   const [kitchenModal, setKitchenModal] = useState(false);
   const [supplierModal, setSupplierModal] = useState(false);
+  const [storeModal, setStoreModal] = useState(false);
   const [editKitchen, setEditKitchen] = useState<Kitchen | null>(null);
   const [editSupplier, setEditSupplier] = useState<Supplier | null>(null);
-
-  // Kitchen form
-  const [kName, setKName] = useState("");
-  const [kCode, setKCode] = useState("");
-  const [kAddress, setKAddress] = useState("");
-  const [kPic, setKPic] = useState("");
-  const [kPhone, setKPhone] = useState("");
+  const [editStore, setEditStore] = useState<Store | null>(null);
 
   useEffect(() => {
     loadAll();
@@ -44,12 +42,14 @@ export const ConnectionPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [k, s] = await Promise.all([
+      const [k, s, st] = await Promise.all([
         invoke<Kitchen[]>("get_kitchens"),
         invoke<Supplier[]>("get_suppliers"),
+        invoke<Store[]>("get_stores"),
       ]);
       setKitchens(k);
       setSuppliers(s);
+      setStores(st);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -59,64 +59,28 @@ export const ConnectionPage: React.FC = () => {
 
   // Kitchen CRUD
   const openKitchenModal = (k?: Kitchen) => {
-    if (k) {
-      setEditKitchen(k);
-      setKName(k.name);
-      setKCode(k.code);
-      setKAddress(k.address || "");
-      setKPic(k.pic_name || "");
-      setKPhone(k.pic_phone || "");
-    } else {
-      setEditKitchen(null);
-      setKName("");
-      setKCode("");
-      setKAddress("");
-      setKPic("");
-      setKPhone("");
-    }
+    setEditKitchen(k || null);
     setKitchenModal(true);
   };
 
-  const saveKitchen = async () => {
-    if (!kName.trim() || !kCode.trim()) return;
-    try {
-      if (editKitchen) {
-        await invoke("update_kitchen", {
-          payload: {
-            id: editKitchen.id,
-            name: kName,
-            code: kCode,
-            address: kAddress || null,
-            pic_name: kPic || null,
-            pic_phone: kPhone || null,
-            is_active: true,
-          },
-        });
-      } else {
-        await invoke("create_kitchen", {
-          payload: {
-            name: kName,
-            code: kCode,
-            address: kAddress || null,
-            pic_name: kPic || null,
-            pic_phone: kPhone || null,
-          },
-        });
-      }
-      setKitchenModal(false);
-      loadAll();
-    } catch (e) {
-      alert(String(e));
-    }
-  };
-
   const deleteKitchen = async (k: Kitchen) => {
-    if (!confirm(`Hapus dapur "${k.name}"?`)) return;
+    const result = await Swal.fire({
+      title: "Hapus dapur?",
+      text: `Apakah Anda yakin ingin menghapus "${k.name}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonText: "Batal",
+      confirmButtonText: "Ya, Hapus",
+    });
+    if (!result.isConfirmed) return;
+
     try {
       await invoke("delete_kitchen", { kitchenId: k.id });
       loadAll();
+      Swal.fire("Berhasil", "Dapur telah dihapus", "success");
     } catch (e) {
-      alert(String(e));
+      Swal.fire("Gagal", String(e), "error");
     }
   };
 
@@ -127,12 +91,50 @@ export const ConnectionPage: React.FC = () => {
   };
 
   const deleteSupplier = async (s: Supplier) => {
-    if (!confirm(`Hapus supplier "${s.name}"?`)) return;
+    const result = await Swal.fire({
+      title: "Hapus supplier?",
+      text: `Apakah Anda yakin ingin menghapus "${s.name}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonText: "Batal",
+      confirmButtonText: "Ya, Hapus",
+    });
+    if (!result.isConfirmed) return;
+
     try {
       await invoke("delete_supplier", { supplierId: s.id });
       loadAll();
+      Swal.fire("Berhasil", "Supplier telah dihapus", "success");
     } catch (e) {
-      alert(String(e));
+      Swal.fire("Gagal", String(e), "error");
+    }
+  };
+
+  // Store CRUD
+  const openStoreModal = (s?: Store) => {
+    setEditStore(s || null);
+    setStoreModal(true);
+  };
+
+  const deleteStore = async (s: Store) => {
+    const result = await Swal.fire({
+      title: "Hapus toko?",
+      text: `Apakah Anda yakin ingin menghapus "${s.name}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonText: "Batal",
+      confirmButtonText: "Ya, Hapus",
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await invoke("delete_store", { id: s.id });
+      loadAll();
+      Swal.fire("Berhasil", "Toko telah dihapus", "success");
+    } catch (e) {
+      Swal.fire("Gagal", String(e), "error");
     }
   };
 
@@ -161,11 +163,19 @@ export const ConnectionPage: React.FC = () => {
       color: "text-amber-600",
       bg: "bg-amber-100",
     },
+    {
+      label: "Master Toko",
+      count: stores.length,
+      icon: StoreIcon,
+      color: "text-violet-600",
+      bg: "bg-violet-100",
+    },
   ];
 
   const tabs = [
     { id: "kitchens" as TabType, label: "Dapur / SPPG" },
-    { id: "suppliers" as TabType, label: "Master Supplier" },
+    { id: "suppliers" as TabType, label: "Supplier" },
+    { id: "stores" as TabType, label: "Toko" },
   ];
 
   return (
@@ -193,12 +203,19 @@ export const ConnectionPage: React.FC = () => {
             >
               <Plus size={16} /> Tambah Dapur
             </button>
-          ) : (
+          ) : activeTab === "suppliers" ? (
             <button
               onClick={() => openSupplierModal()}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
             >
               <Plus size={16} /> Tambah Supplier
+            </button>
+          ) : (
+            <button
+              onClick={() => openStoreModal()}
+              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-violet-500/20 transition-all flex items-center gap-2"
+            >
+              <Plus size={16} /> Tambah Toko
             </button>
           )}
         </div>
@@ -222,7 +239,7 @@ export const ConnectionPage: React.FC = () => {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {stats.map((s, i) => (
             <div
               key={i}
@@ -265,6 +282,158 @@ export const ConnectionPage: React.FC = () => {
                 <p className="text-sm font-medium">Memuat data...</p>
               </div>
             ) : activeTab === "kitchens" ? (
+              kitchens.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="w-20 h-20 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 border border-blue-100">
+                    <ChefHat size={32} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                    Belum Ada Dapur
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2 font-medium max-w-xs">
+                    Silakan tambahkan data dapur atau SPPG MBG untuk memulai operasional.
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Kode
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Nama Dapur
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Alamat
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        PIC
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {kitchens.map((k) => (
+                      <tr
+                        key={k.id}
+                        className="hover:bg-slate-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-mono font-bold text-blue-600">
+                          {k.code}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-800">
+                          {k.name}
+                        </td>
+                        <td className="px-6 py-4 text-slate-500 text-sm max-w-[300px] truncate">
+                          {k.address || "-"}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 font-medium">
+                          {k.pic_name || "-"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => openKitchenModal(k)}
+                              className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => deleteKitchen(k)}
+                              className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            ) : activeTab === "suppliers" ? (
+              suppliers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-6 border border-emerald-100">
+                    <Truck size={32} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                    Belum Ada Supplier
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2 font-medium max-w-xs">
+                    Kelola data pemasok barang baik internal maupun mitra eksternal.
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Kode
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Nama Supplier
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Kategori
+                      </th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
+                        Aksi
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {suppliers.map((s) => (
+                      <tr
+                        key={s.id}
+                        className="hover:bg-slate-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 font-mono font-bold text-emerald-600">
+                          {s.code}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-800">
+                          {s.name}
+                        </td>
+                        <td className="px-6 py-4 text-slate-600 font-medium">
+                          {s.is_internal ? "Internal" : "External"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => openSupplierModal(s)}
+                              className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => deleteSupplier(s)}
+                              className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
+            ) : stores.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-violet-50 text-violet-600 flex items-center justify-center mb-6 border border-violet-100">
+                  <StoreIcon size={32} />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                  Belum Ada Toko
+                </h3>
+                <p className="text-sm text-slate-500 mt-2 font-medium max-w-xs">
+                  Daftarkan unit toko atau mitra bisnis yang menerima pengiriman barang.
+                </p>
+              </div>
+            ) : (
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -272,7 +441,7 @@ export const ConnectionPage: React.FC = () => {
                       Kode
                     </th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Nama Dapur
+                      Nama Toko
                     </th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                       Alamat
@@ -286,100 +455,33 @@ export const ConnectionPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {kitchens.map((k) => (
+                  {stores.map((st) => (
                     <tr
-                      key={k.id}
+                      key={st.id}
                       className="hover:bg-slate-50/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-mono font-bold text-blue-600">
-                        {k.code}
+                      <td className="px-6 py-4 font-mono font-bold text-violet-600">
+                        {st.code || "-"}
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-800">
-                        {k.name}
+                        {st.name}
                       </td>
                       <td className="px-6 py-4 text-slate-500 text-sm max-w-[300px] truncate">
-                        {k.address || "-"}
+                        {st.address || "-"}
                       </td>
                       <td className="px-6 py-4 text-slate-600 font-medium">
-                        {k.pic_name || "-"}
+                        {st.pic_name || "-"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex justify-center gap-2">
                           <button
-                            onClick={() => openKitchenModal(k)}
+                            onClick={() => openStoreModal(st)}
                             className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
                           >
                             <Edit2 size={14} />
                           </button>
                           <button
-                            onClick={() => deleteKitchen(k)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Kode
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Nama Supplier
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Telepon
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      Status / Tipe
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {suppliers.map((s) => (
-                    <tr
-                      key={s.id}
-                      className="hover:bg-slate-50/50 transition-colors"
-                    >
-                      <td className="px-6 py-4 font-mono font-bold text-slate-600">
-                        {s.code}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        {s.name}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 font-medium">
-                        {s.phone || "-"}
-                      </td>
-                      <td className="px-6 py-4">
-                        {s.is_internal ? (
-                          <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                            Internal
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                            External
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => openSupplierModal(s)}
-                            className="p-2 hover:bg-blue-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => deleteSupplier(s)}
+                            onClick={() => deleteStore(st)}
                             className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
                           >
                             <Trash2 size={14} />
@@ -396,99 +498,26 @@ export const ConnectionPage: React.FC = () => {
       </div>
 
       {/* Kitchen Modal */}
-      {kitchenModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <ChefHat size={18} className="text-blue-600" />
-                {editKitchen ? "Edit Dapur" : "Tambah Dapur"}
-              </h3>
-              <button
-                onClick={() => setKitchenModal(false)}
-                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
-                    Nama Dapur *
-                  </label>
-                  <input
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                    value={kName}
-                    onChange={(e) => setKName(e.target.value)}
-                    placeholder="SPPG Kertonatan 2"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
-                    Kode *
-                  </label>
-                  <input
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                    value={kCode}
-                    onChange={(e) => setKCode(e.target.value)}
-                    placeholder="KRTN2"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
-                  Alamat
-                </label>
-                <input
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                  value={kAddress}
-                  onChange={(e) => setKAddress(e.target.value)}
-                  placeholder="Jl. Diponegoro No.2..."
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
-                    PIC
-                  </label>
-                  <input
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                    value={kPic}
-                    onChange={(e) => setKPic(e.target.value)}
-                    placeholder="Nama PIC"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
-                    No. HP PIC
-                  </label>
-                  <input
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                    value={kPhone}
-                    onChange={(e) => setKPhone(e.target.value)}
-                    placeholder="08xxx"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50">
-              <button
-                onClick={() => setKitchenModal(false)}
-                className="px-4 py-2 text-slate-500 font-bold hover:text-slate-800 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                onClick={saveKitchen}
-                className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all flex items-center gap-2"
-              >
-                <Save size={14} /> Simpan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <KitchenModal
+        isOpen={kitchenModal}
+        onClose={() => setKitchenModal(false)}
+        initialData={editKitchen}
+        onSuccess={() => {
+          loadAll();
+          setKitchenModal(false);
+        }}
+      />
+
+      {/* Store Modal */}
+      <StoreModal
+        isOpen={storeModal}
+        onClose={() => setStoreModal(false)}
+        initialData={editStore}
+        onSuccess={() => {
+          loadAll();
+          setStoreModal(false);
+        }}
+      />
 
       {/* Supplier Modal */}
       <SupplierModal

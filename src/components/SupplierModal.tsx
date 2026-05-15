@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { X, Save, Truck } from "lucide-react";
 import type { Supplier } from "../types";
+import Swal from "sweetalert2";
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -53,9 +54,6 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             is_active: true,
           },
         });
-        // For update, we might not get the full supplier back from the invoke,
-        // so we can just pass back a placeholder or fetch again.
-        // But SettingsPage calls loadAll anyway.
         onSuccess({ ...initialData, name, phone, address, is_internal: isInternal });
       } else {
         const supplier = await invoke<Supplier>("create_supplier", {
@@ -70,7 +68,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
       }
       onClose();
     } catch (e) {
-      alert(String(e));
+      Swal.fire("Gagal", String(e), "error");
     } finally {
       setLoading(false);
     }

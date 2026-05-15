@@ -221,8 +221,16 @@ export const ReportPage: React.FC = () => {
                     <p className="text-xs font-bold uppercase tracking-widest">Memuat Laporan...</p>
                   </div>
                 ) : groupedReports.length === 0 ? (
-                  <div className="py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200 text-center">
-                    <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Tidak ada data invoice ditemukan</p>
+                  <div className="flex flex-col items-center justify-center py-32 text-center bg-white rounded-[40px] border-2 border-dashed border-slate-100 shadow-sm">
+                    <div className="w-24 h-24 rounded-[32px] bg-slate-50 text-slate-300 flex items-center justify-center mb-6 border border-slate-100 shadow-inner">
+                      <Search size={40} />
+                    </div>
+                    <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                      Tidak Ada Data Invoice
+                    </h3>
+                    <p className="text-sm text-slate-400 mt-2 font-medium max-w-xs leading-relaxed">
+                      Tidak ditemukan data invoice untuk kriteria filter yang Anda pilih. Silakan ubah filter tanggal atau dapur.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-12">

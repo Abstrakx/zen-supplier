@@ -8,5 +8,7 @@ pub mod order_cmd;
 pub mod delivery_cmd;
 pub mod invoice_cmd;
 pub mod report_cmd;
+pub mod store_cmd;
+pub mod nota_cmd;
 
 pub struct DbState(pub Mutex<Connection>);
