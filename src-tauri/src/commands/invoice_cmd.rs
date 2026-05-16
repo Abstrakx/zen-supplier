@@ -9,6 +9,9 @@ pub struct Invoice {
     pub daily_order_id: String,
     pub kitchen_id: String,
     pub kitchen_name: Option<String>,
+    pub kitchen_address: Option<String>,
+    pub kitchen_pic_name: Option<String>,
+    pub kitchen_pic_phone: Option<String>,
     pub invoice_number: String,
     pub invoice_type: String,
     pub invoice_date: String,
@@ -52,10 +55,10 @@ pub fn generate_invoice(state: State<'_, DbState>, daily_order_id: String, kitch
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    let (kitchen_name, kitchen_code): (String, String) = tx.query_row(
-        "SELECT name, code FROM kitchens WHERE id=?1", 
+    let (kitchen_name, kitchen_code, kitchen_address, kitchen_pic_name, kitchen_pic_phone): (String, String, Option<String>, Option<String>, Option<String>) = tx.query_row(
+        "SELECT name, code, address, pic_name, pic_phone FROM kitchens WHERE id=?1", 
         [&kitchen_id], 
-        |r| Ok((r.get(0)?, r.get(1)?))
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
     ).map_err(|e| e.to_string())?;
 
     let po_number: String = tx
@@ -118,17 +121,33 @@ pub fn generate_invoice(state: State<'_, DbState>, daily_order_id: String, kitch
     tx.execute("UPDATE invoices SET total_amount=?1 WHERE id=?2", rusqlite::params![total, id]).map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
 
-    Ok(Invoice { id, daily_order_id, kitchen_id, kitchen_name: Some(kitchen_name), invoice_number, invoice_type, invoice_date, total_amount: total, status: "draft".into(), notes: None, item_count: ic, created_at: None })
+    Ok(Invoice { 
+        id, 
+        daily_order_id, 
+        kitchen_id, 
+        kitchen_name: Some(kitchen_name), 
+        kitchen_address,
+        kitchen_pic_name,
+        kitchen_pic_phone,
+        invoice_number, 
+        invoice_type, 
+        invoice_date, 
+        total_amount: total, 
+        status: "draft".into(), 
+        notes: None, 
+        item_count: ic, 
+        created_at: None 
+    })
 }
 
 #[tauri::command]
 pub fn get_invoices(state: State<'_, DbState>, daily_order_id: Option<String>) -> Result<Vec<Invoice>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    let base = "SELECT i.id,i.daily_order_id,i.kitchen_id,k.name,i.invoice_number,i.invoice_type,i.invoice_date,i.total_amount,i.status,i.notes,i.created_at,(SELECT COUNT(*) FROM invoice_items WHERE invoice_id=i.id) FROM invoices i LEFT JOIN kitchens k ON i.kitchen_id=k.id";
+    let base = "SELECT i.id,i.daily_order_id,i.kitchen_id,k.name,i.invoice_number,i.invoice_type,i.invoice_date,i.total_amount,i.status,i.notes,i.created_at,(SELECT COUNT(*) FROM invoice_items WHERE invoice_id=i.id),k.address,k.pic_name,k.pic_phone FROM invoices i LEFT JOIN kitchens k ON i.kitchen_id=k.id";
     let query = if daily_order_id.is_some() { format!("{} WHERE i.daily_order_id=?1 ORDER BY i.created_at DESC", base) } else { format!("{} ORDER BY i.created_at DESC LIMIT 50", base) };
     let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
     let map_row = |row: &rusqlite::Row| -> rusqlite::Result<Invoice> {
-        Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)? })
+        Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)?, kitchen_address: row.get(12)?, kitchen_pic_name: row.get(13)?, kitchen_pic_phone: row.get(14)? })
     };
     let rows = if let Some(oid) = &daily_order_id { stmt.query_map([oid], map_row).map_err(|e| e.to_string())? } else { stmt.query_map([], map_row).map_err(|e| e.to_string())? };
     let mut invoices = Vec::new();
@@ -140,8 +159,8 @@ pub fn get_invoices(state: State<'_, DbState>, daily_order_id: Option<String>) -
 pub fn get_invoice_detail(state: State<'_, DbState>, invoice_id: String) -> Result<InvoiceDetail, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let invoice = conn.query_row(
-        "SELECT i.id,i.daily_order_id,i.kitchen_id,k.name,i.invoice_number,i.invoice_type,i.invoice_date,i.total_amount,i.status,i.notes,i.created_at,(SELECT COUNT(*) FROM invoice_items WHERE invoice_id=i.id) FROM invoices i LEFT JOIN kitchens k ON i.kitchen_id=k.id WHERE i.id=?1",
-        [&invoice_id], |row| Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)? })
+        "SELECT i.id,i.daily_order_id,i.kitchen_id,k.name,i.invoice_number,i.invoice_type,i.invoice_date,i.total_amount,i.status,i.notes,i.created_at,(SELECT COUNT(*) FROM invoice_items WHERE invoice_id=i.id),k.address,k.pic_name,k.pic_phone FROM invoices i LEFT JOIN kitchens k ON i.kitchen_id=k.id WHERE i.id=?1",
+        [&invoice_id], |row| Ok(Invoice { id: row.get(0)?, daily_order_id: row.get(1)?, kitchen_id: row.get(2)?, kitchen_name: row.get(3)?, invoice_number: row.get(4)?, invoice_type: row.get(5)?, invoice_date: row.get(6)?, total_amount: row.get(7)?, status: row.get(8)?, notes: row.get(9)?, created_at: row.get(10)?, item_count: row.get(11)?, kitchen_address: row.get(12)?, kitchen_pic_name: row.get(13)?, kitchen_pic_phone: row.get(14)? })
     ).map_err(|e| e.to_string())?;
 
     let mut stmt = conn.prepare("SELECT id,product_name,day_name,item_date,quantity,unit,unit_price,buy_price,subtotal,product_id,unit_id,is_manual,original_price FROM invoice_items WHERE invoice_id=?1 ORDER BY product_name").map_err(|e| e.to_string())?;
@@ -194,14 +213,14 @@ pub fn finalize_invoice(state: State<'_, DbState>, invoice_id: String) -> Result
 }
 
 #[tauri::command]
-pub fn update_invoice_item(state: State<'_, DbState>, item_id: String, quantity: f64, unit_price: f64) -> Result<(), String> {
+pub fn update_invoice_item(state: State<'_, DbState>, item_id: String, quantity: f64, unit_price: f64, buy_price: Option<f64>) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
     let subtotal = quantity * unit_price;
     tx.execute(
-        "UPDATE invoice_items SET quantity = ?1, unit_price = ?2, subtotal = ?3 WHERE id = ?4",
-        rusqlite::params![quantity, unit_price, subtotal, item_id],
+        "UPDATE invoice_items SET quantity = ?1, unit_price = ?2, subtotal = ?3, buy_price = ?4 WHERE id = ?5",
+        rusqlite::params![quantity, unit_price, subtotal, buy_price, item_id],
     ).map_err(|e| e.to_string())?;
 
     // Update total amount of the invoice

@@ -167,6 +167,9 @@ export interface Invoice {
   daily_order_id: string;
   kitchen_id: string;
   kitchen_name: string | null;
+  kitchen_address: string | null;
+  kitchen_pic_name: string | null;
+  kitchen_pic_phone: string | null;
   invoice_number: string;
   invoice_type: 'daily' | 'operational' | 'rapelan';
   invoice_date: string;

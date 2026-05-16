@@ -34,6 +34,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { id: "catalog", icon: PackageSearch, label: "Katalog" },
+  { id: "nota-breakdown", icon: FileStack, label: "Nota Breakdown", accent: "violet" },
+  { id: "bulk-price", icon: Tag, label: "Harga Massal", accent: "orange" },
   {
     id: "daily-orders",
     icon: ClipboardList,
@@ -42,8 +44,6 @@ const navItems: NavItem[] = [
   },
   { id: "delivery-notes", icon: Truck, label: "Surat Jalan", accent: "emerald" },
   { id: "invoices", icon: Receipt, label: "Invoice", accent: "amber" },
-  { id: "nota-breakdown", icon: FileStack, label: "Nota Breakdown", accent: "violet" },
-  { id: "bulk-price", icon: Tag, label: "Harga Massal", accent: "orange" },
   { id: "reports", icon: BarChart3, label: "Laporan" },
   { id: "koneksi", icon: Users, label: "Koneksi", accent: "indigo" },
   { id: "settings", icon: Settings, label: "Pengaturan" },

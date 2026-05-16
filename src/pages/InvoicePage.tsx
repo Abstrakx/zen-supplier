@@ -15,6 +15,8 @@ import { formatIndonesianDate } from "../utils/formatters";
 import type { Invoice, InvoiceDetail, Product, ProductUnit } from "../types";
 import Swal from "sweetalert2";
 import { CurrencyInput } from "../components/CurrencyInput";
+import agsLogo from "../assets/AGS.png";
+import appLogo from "../assets/app-icon.png";
 
 export const InvoicePage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -89,9 +91,15 @@ export const InvoicePage: React.FC = () => {
     itemId: string,
     quantity: number,
     unitPrice: number,
+    buyPrice: number | null,
   ) => {
     try {
-      await invoke("update_invoice_item", { itemId, quantity, unitPrice });
+      await invoke("update_invoice_item", {
+        itemId,
+        quantity,
+        unitPrice,
+        buyPrice,
+      });
       if (selectedInvoice) viewDetail(selectedInvoice.invoice.id);
       loadInvoices();
     } catch (e) {
@@ -540,7 +548,9 @@ export const InvoicePage: React.FC = () => {
                       TANGGAL CETAK:
                     </p>
                     <p className="font-black text-lg">
-                      {formatIndonesianDate(selectedInvoice.invoice.invoice_date)}
+                      {formatIndonesianDate(
+                        selectedInvoice.invoice.invoice_date,
+                      )}
                     </p>
                     <p
                       className={`text-[10px] font-black mt-2 inline-block px-2 py-1 rounded ${selectedInvoice.invoice.status === "finalized" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
@@ -565,8 +575,11 @@ export const InvoicePage: React.FC = () => {
                       <th className="border border-black px-4 py-3 w-16 text-right">
                         QTY
                       </th>
+                      <th className="border border-black px-4 py-3 w-24 text-right no-print">
+                        HARGA MODAL
+                      </th>
                       <th className="border border-black px-4 py-3 w-24 text-right">
-                        UNIT PRICE
+                        HARGA DAPUR
                       </th>
                       <th className="border border-black px-4 py-3 w-28 text-right">
                         SUBTOTAL
@@ -611,6 +624,7 @@ export const InvoicePage: React.FC = () => {
                                     item.id,
                                     parseFloat(e.target.value),
                                     item.unit_price,
+                                    item.buy_price ?? null,
                                   )
                                 }
                               />
@@ -627,19 +641,71 @@ export const InvoicePage: React.FC = () => {
                             </>
                           )}
                         </td>
-                        <td className="border-x border-black px-4 py-3 text-right font-bold">
+                        <td className="border-x border-black px-4 py-3 text-right font-bold no-print">
                           {selectedInvoice.invoice.status === "draft" ? (
-                            <input
-                              type="number"
-                              className="w-full text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500"
-                              defaultValue={item.unit_price}
-                              onBlur={(e) =>
+                            <CurrencyInput
+                              value={item.buy_price ?? 0}
+                              onChange={(val) => {
+                                const newItems = selectedInvoice.items.map(
+                                  (i) =>
+                                    i.id === item.id
+                                      ? {
+                                        ...i,
+                                        buy_price: val === "" ? 0 : val,
+                                      }
+                                      : i,
+                                );
+                                setSelectedInvoice({
+                                  ...selectedInvoice,
+                                  items: newItems,
+                                });
+                              }}
+                              onBlur={() =>
                                 updateItem(
                                   item.id,
                                   item.quantity,
-                                  parseFloat(e.target.value),
+                                  item.unit_price,
+                                  item.buy_price ?? null,
                                 )
                               }
+                              prefix=""
+                              className="w-full text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-emerald-500 text-emerald-700 px-0!"
+                            />
+                          ) : item.buy_price ? (
+                            item.buy_price.toLocaleString("id-ID")
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="border-x border-black px-4 py-3 text-right font-bold">
+                          {selectedInvoice.invoice.status === "draft" ? (
+                            <CurrencyInput
+                              value={item.unit_price}
+                              onChange={(val) => {
+                                const newItems = selectedInvoice.items.map(
+                                  (i) =>
+                                    i.id === item.id
+                                      ? {
+                                        ...i,
+                                        unit_price: val === "" ? 0 : val,
+                                      }
+                                      : i,
+                                );
+                                setSelectedInvoice({
+                                  ...selectedInvoice,
+                                  items: newItems,
+                                });
+                              }}
+                              onBlur={() =>
+                                updateItem(
+                                  item.id,
+                                  item.quantity,
+                                  item.unit_price,
+                                  item.buy_price ?? null,
+                                )
+                              }
+                              prefix=""
+                              className="w-full text-right bg-transparent outline-none border-b border-dashed border-slate-300 focus:border-blue-500 px-0!"
                             />
                           ) : (
                             item.unit_price.toLocaleString("id-ID")
@@ -669,6 +735,7 @@ export const InvoicePage: React.FC = () => {
                         <td className="border-x border-black px-2"></td>
                         <td className="border-x border-black px-4"></td>
                         <td className="border-x border-black px-4"></td>
+                        <td className="border-x border-black px-4 no-print"></td>
                         <td className="border-x border-black px-4"></td>
                         <td className="border-x border-black px-4"></td>
                       </tr>
@@ -677,8 +744,14 @@ export const InvoicePage: React.FC = () => {
                   <tfoot>
                     <tr className="bg-gray-100 font-black text-sm">
                       <td
+                        colSpan={6}
+                        className="border border-black px-6 py-4 text-right tracking-widest print:hidden"
+                      >
+                        TOTAL TAGIHAN
+                      </td>
+                      <td
                         colSpan={5}
-                        className="border border-black px-6 py-4 text-right tracking-widest"
+                        className="border border-black px-6 py-4 text-right tracking-widest hidden print:table-cell"
                       >
                         TOTAL TAGIHAN
                       </td>
@@ -748,83 +821,144 @@ export const InvoicePage: React.FC = () => {
       <div className="hidden print:block fixed inset-0 bg-white z-9999">
         {selectedInvoice && (
           <div className="p-8 text-black font-mono">
-            <div className="text-center mb-8 border-b-2 border-black pb-4">
-              <h1 className="text-2xl font-black">ZEN SUPPLIER</h1>
-              <p className="text-sm font-bold uppercase">
-                {selectedInvoice.invoice.invoice_type === "daily"
+            {/* ═══ UNIFIED PRINT LAYOUT ═══ */}
+            {(() => {
+              const isOps = selectedInvoice.invoice.invoice_type === "operational";
+              const logo = isOps ? agsLogo : appLogo;
+              const companyName = isOps ? "ALFARIZI GROUP SUPPLAY" : "ZEN SUPPLIER";
+              const tagline = isOps ? "Professional Kitchen & Food Solutions" : "Daily Kitchen Supply Billing";
+              const typeLabel = isOps
+                ? "INVOICE OPERASIONAL"
+                : selectedInvoice.invoice.invoice_type === "daily"
                   ? "INVOICE HARIAN"
-                  : selectedInvoice.invoice.invoice_type === "rapelan"
-                    ? "INVOICE RAPELAN"
-                    : "INVOICE OPERASIONAL"}
-              </p>
-              <p className="text-sm font-bold">
-                NO: {selectedInvoice.invoice.invoice_number}
-              </p>
-            </div>
-            <div className="flex justify-between text-sm mb-8 font-bold uppercase">
-              <div>KEPADA: {selectedInvoice.invoice.kitchen_name}</div>
-              <div>TANGGAL: {formatIndonesianDate(selectedInvoice.invoice.invoice_date)}</div>
-            </div>
-            <table className="w-full border-collapse border border-black text-xs">
-              <thead>
-                <tr className="bg-gray-100 uppercase font-bold">
-                  <th className="border border-black px-2 py-2">#</th>
-                  <th className="border border-black px-2 py-2 text-left">
-                    ITEM
-                  </th>
-                  <th className="border border-black px-2 py-2 text-right">
-                    QTY
-                  </th>
-                  <th className="border border-black px-2 py-2 text-right">
-                    HARGA
-                  </th>
-                  <th className="border border-black px-2 py-2 text-right">
-                    TOTAL
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedInvoice.items.map((item, i) => (
-                  <tr key={item.id}>
-                    <td className="border border-black px-2 py-2 text-center">
-                      {i + 1}
-                    </td>
-                    <td className="border border-black px-2 py-2 font-bold">
-                      {item.product_name}
-                    </td>
-                    <td className="border border-black px-2 py-2 text-right font-black">
-                      {item.quantity} {item.unit}
-                    </td>
-                    <td className="border border-black px-2 py-2 text-right">
-                      {item.unit_price.toLocaleString("id-ID")}
-                    </td>
-                    <td className="border border-black px-2 py-2 text-right font-black">
-                      {item.subtotal.toLocaleString("id-ID")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-gray-100 font-black">
-                  <td
-                    colSpan={4}
-                    className="border border-black px-2 py-3 text-right"
-                  >
-                    GRAND TOTAL
-                  </td>
-                  <td className="border border-black px-2 py-3 text-right">
-                    Rp{" "}
-                    {selectedInvoice.invoice.total_amount.toLocaleString(
-                      "id-ID",
-                    )}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="mt-20 text-center text-xs font-bold uppercase">
-              <p className="mb-20">FINANCE DEPARTMENT,</p>
-              <p>(________________)</p>
-            </div>
+                  : "INVOICE RAPELAN";
+
+              return (
+                <div className="space-y-6">
+                  {/* Header */}
+                  <div className="flex justify-between items-start border-b-2 border-black pb-4">
+                    <div className="flex gap-6 items-center">
+                      <img src={logo} alt="Logo" className="w-24 h-24 object-contain" />
+                      <div>
+                        <h1 className="text-2xl font-black tracking-tighter uppercase">{companyName}</h1>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{tagline}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="bg-black text-white px-4 py-1 text-xs font-black uppercase tracking-widest mb-2 inline-block">
+                        {typeLabel}
+                      </div>
+                      <p className="text-sm font-black uppercase">NO: {selectedInvoice.invoice.invoice_number}</p>
+                      <p className="text-xs font-bold uppercase">{selectedInvoice.invoice.kitchen_name}</p>
+                    </div>
+                  </div>
+
+                  {/* Information Grid */}
+                  <div className="grid grid-cols-2 gap-8 text-[11px] leading-relaxed border-b border-black pb-4">
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">PIC</span>
+                        <span>: Alfarizi</span>
+                      </div>
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">Alamat</span>
+                        <span>: Jl. Sedahromo Lor, RT 02/RW 07. Kartasura, Sukoharjo Jawa Tengah</span>
+                      </div>
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">No Hp</span>
+                        <span>: 082137476281</span>
+                      </div>
+                      <div className="mt-4 pt-2 border-t border-dashed border-gray-300">
+                        <div className="grid grid-cols-[80px_1fr] gap-1 font-black">
+                          <span>Pengiriman</span>
+                          <span>: {formatIndonesianDate(selectedInvoice.invoice.invoice_date)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">Orderer</span>
+                        <span>: {selectedInvoice.invoice.kitchen_pic_name || "-"}</span>
+                      </div>
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">Alamat</span>
+                        <span>: {selectedInvoice.invoice.kitchen_address || "-"}</span>
+                      </div>
+                      <div className="grid grid-cols-[80px_1fr] gap-1">
+                        <span className="font-bold">No Hp</span>
+                        <span>: {selectedInvoice.invoice.kitchen_pic_phone || "-"}</span>
+                      </div>
+                      <div className="mt-4 pt-2 border-t border-dashed border-gray-300">
+                        <div className="grid grid-cols-[80px_1fr] gap-1 font-black">
+                          <span>{isOps ? "Menu" : "Digunakan"}</span>
+                          <span>: {(() => {
+                            const date = new Date(selectedInvoice.invoice.invoice_date);
+                            date.setDate(date.getDate() + 1);
+                            return formatIndonesianDate(date.toISOString().split('T')[0]);
+                          })()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <table className="w-full border-collapse border border-black text-[11px] mt-6">
+                    <thead>
+                      <tr className="bg-gray-100 uppercase font-black">
+                        <th className="border border-black px-2 py-3 w-10 text-center">#</th>
+                        <th className="border border-black px-4 py-3 text-left">DESKRIPSI BARANG</th>
+                        <th className="border border-black px-4 py-3 w-16 text-right">QTY</th>
+                        <th className="border border-black px-4 py-3 w-24 text-right">HARGA</th>
+                        <th className="border border-black px-4 py-3 w-28 text-right">SUBTOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInvoice.items.map((item, i) => (
+                        <tr key={item.id} className="border-b border-black">
+                          <td className="border-x border-black px-2 py-3 text-center">{i + 1}</td>
+                          <td className="border-x border-black px-4 py-3 font-black">{item.product_name}</td>
+                          <td className="border-x border-black px-4 py-3 text-right font-black">
+                            {item.quantity} {item.unit}
+                          </td>
+                          <td className="border-x border-black px-4 py-3 text-right font-bold">
+                            {item.unit_price.toLocaleString("id-ID")}
+                          </td>
+                          <td className="border-x border-black px-4 py-3 text-right font-black">
+                            Rp {item.subtotal.toLocaleString("id-ID")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-gray-100 font-black text-sm">
+                        <td colSpan={4} className="border border-black px-6 py-4 text-right tracking-widest">
+                          TOTAL TAGIHAN
+                        </td>
+                        <td className="border border-black px-6 py-4 text-right">
+                          Rp {selectedInvoice.invoice.total_amount.toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  {/* Footer / Signatures */}
+                  <div className="mt-12 grid grid-cols-2 gap-10">
+                    <div className="text-[10px] text-gray-500 italic leading-relaxed">
+                      <p className="font-bold text-black uppercase mb-1">Catatan:</p>
+                      <p>1. Invoice ini adalah bukti sah penagihan barang.</p>
+                      <p>2. Pembayaran harap dilakukan sesuai dengan termin yang disepakati.</p>
+                      <p>3. Barang yang sudah diterima tidak dapat dikembalikan.</p>
+                    </div>
+                    <div className="text-center text-[10px] font-black uppercase flex flex-col justify-end h-32">
+                      <p className="mb-16 italic text-gray-400">HORMAT KAMI,</p>
+                      <div className="w-40 h-px bg-black mx-auto"></div>
+                      <p className="mt-2 font-black uppercase">{companyName}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
