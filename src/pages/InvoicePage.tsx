@@ -17,6 +17,7 @@ import Swal from "sweetalert2";
 import { CurrencyInput } from "../components/CurrencyInput";
 import agsLogo from "../assets/AGS.png";
 import appLogo from "../assets/app-icon.png";
+import ttdImage from "../assets/TTD.png";
 
 export const InvoicePage: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -195,9 +196,9 @@ export const InvoicePage: React.FC = () => {
   }, [filteredInvoices]);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
+    <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm">
+      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm print:hidden">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-50 rounded-xl border border-amber-100 shadow-sm">
             <Receipt size={20} className="text-amber-600" />
@@ -214,7 +215,7 @@ export const InvoicePage: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="px-8 py-4 bg-white/50 border-b border-slate-200 flex items-center justify-between">
+      <div className="px-8 py-4 bg-white/50 border-b border-slate-200 flex items-center justify-between print:hidden">
         <div className="relative w-full max-w-md group">
           <Search
             size={16}
@@ -229,7 +230,7 @@ export const InvoicePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8 print:hidden">
         {invoices.length === 0 && !loading && (
           <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-50 flex items-center justify-center text-amber-600 mb-6 border border-amber-100">
@@ -336,7 +337,7 @@ export const InvoicePage: React.FC = () => {
 
       {/* Invoice Detail Modal */}
       {selectedInvoice && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:bg-transparent print:backdrop-blur-none print:p-0 print:static print:block print:h-auto print:overflow-visible">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl no-print">
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -817,8 +818,7 @@ export const InvoicePage: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden Print Container */}
-      <div className="hidden print:block fixed inset-0 bg-white z-9999">
+      <div className="hidden print:block bg-white">
         {selectedInvoice && (
           <div className="p-8 text-black font-mono">
             {/* ═══ UNIFIED PRINT LAYOUT ═══ */}
@@ -915,7 +915,7 @@ export const InvoicePage: React.FC = () => {
                     </thead>
                     <tbody>
                       {selectedInvoice.items.map((item, i) => (
-                        <tr key={item.id} className="border-b border-black">
+                        <tr key={item.id} className="border-b border-black print:break-inside-avoid">
                           <td className="border-x border-black px-2 py-3 text-center">{i + 1}</td>
                           <td className="border-x border-black px-4 py-3 font-black">{item.product_name}</td>
                           <td className="border-x border-black px-4 py-3 text-right font-black">
@@ -950,9 +950,10 @@ export const InvoicePage: React.FC = () => {
                       <p>2. Pembayaran harap dilakukan sesuai dengan termin yang disepakati.</p>
                       <p>3. Barang yang sudah diterima tidak dapat dikembalikan.</p>
                     </div>
-                    <div className="text-center text-[10px] font-black uppercase flex flex-col justify-end h-32">
-                      <p className="mb-16 italic text-gray-400">HORMAT KAMI,</p>
-                      <div className="w-40 h-px bg-black mx-auto"></div>
+                    <div className="text-center text-[10px] font-black uppercase flex flex-col justify-end items-center h-32 relative">
+                      <p className="italic text-gray-400">HORMAT KAMI,</p>
+                      <img src={ttdImage} alt="Tanda Tangan" className="w-28 h-16 object-contain my-1" />
+                      <div className="w-40 h-px bg-black"></div>
                       <p className="mt-2 font-black uppercase">{companyName}</p>
                     </div>
                   </div>

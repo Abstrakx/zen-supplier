@@ -779,12 +779,12 @@ pub fn sync_po_to_delivery(state: State<'_, DbState>, order_id: String) -> Resul
     let mut conn = state.0.lock().map_err(|e| e.to_string())?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
-    // 1. Get the draft SJ id
+    // 1. Get the SJ id (whether draft or done)
     let sj_id: String = tx.query_row(
-        "SELECT id FROM delivery_notes WHERE daily_order_id = ?1 AND status = 'draft' LIMIT 1",
+        "SELECT id FROM delivery_notes WHERE daily_order_id = ?1 LIMIT 1",
         [&order_id],
         |r| r.get(0),
-    ).map_err(|_| "Tidak ditemukan draft Surat Jalan untuk PO ini.")?;
+    ).map_err(|_| "Tidak ditemukan Surat Jalan untuk PO ini.")?;
 
     // 2. Delete old items
     tx.execute("DELETE FROM delivery_note_items WHERE delivery_note_id = ?1", [&sj_id]).map_err(|e| e.to_string())?;

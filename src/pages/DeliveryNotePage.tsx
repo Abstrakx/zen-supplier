@@ -13,7 +13,7 @@ export const DeliveryNotePage: React.FC = () => {
     null,
   );
   const [search, setSearch] = useState("");
-  
+
 
   useEffect(() => {
     loadNotes();
@@ -73,9 +73,9 @@ export const DeliveryNotePage: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
+    <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-slate-50 text-slate-900 font-sans">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm">
+      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm print:hidden">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 shadow-sm">
             <Truck size={20} className="text-emerald-600" />
@@ -92,7 +92,7 @@ export const DeliveryNotePage: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="px-8 py-4 bg-white/50 border-b border-slate-200 flex items-center justify-between">
+      <div className="px-8 py-4 bg-white/50 border-b border-slate-200 flex items-center justify-between print:hidden">
         <div className="relative w-full max-w-md group">
           <Search
             size={16}
@@ -107,7 +107,7 @@ export const DeliveryNotePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8 print:hidden">
         {notes.length === 0 && !loading && (
           <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 mx-auto rounded-3xl bg-emerald-50 flex items-center justify-center text-emerald-600 mb-6 border border-emerald-100">
@@ -178,7 +178,7 @@ export const DeliveryNotePage: React.FC = () => {
 
       {/* Print Preview Modal */}
       {selectedNote && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:bg-transparent print:backdrop-blur-none print:p-0 print:static print:block print:h-auto print:overflow-visible">
           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl no-print">
             <div className="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-black text-slate-800 uppercase tracking-tight">
@@ -293,21 +293,6 @@ export const DeliveryNotePage: React.FC = () => {
                     </tr>
                   </tfoot>
                 </table>
-
-                <div className="grid grid-cols-2 gap-16 mt-16 text-center text-[10px] font-black uppercase">
-                  <div>
-                    <p className="mb-16">DIBUAT OLEH (ADM),</p>
-                    <div className="w-32 h-px bg-black mx-auto"></div>
-                    <p className="mt-2 text-gray-400">ZEN SUPPLIER TEAM</p>
-                  </div>
-                  <div>
-                    <p className="mb-16">DITERIMA OLEH (KITCHEN),</p>
-                    <div className="w-32 h-px bg-black mx-auto"></div>
-                    <p className="mt-2 text-gray-400">
-                      TANDA TANGAN & NAMA TERANG
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -330,7 +315,7 @@ export const DeliveryNotePage: React.FC = () => {
       )}
 
       {/* Hidden Print Container */}
-      <div className="hidden print:block fixed inset-0 bg-white z-9999">
+      <div className="hidden print:block bg-white">
         {selectedNote && (
           <div className="p-8 text-black font-mono">
             <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-6">
@@ -393,7 +378,7 @@ export const DeliveryNotePage: React.FC = () => {
               </thead>
               <tbody>
                 {selectedNote.items.map((item, i) => (
-                  <tr key={item.id} className="border-b border-gray-200">
+                  <tr key={item.id} className="border-b border-gray-200 print:break-inside-avoid">
                     <td className="border-x border-black px-3 py-3 text-center font-bold text-gray-400">
                       {i + 1}
                     </td>
@@ -434,12 +419,12 @@ export const DeliveryNotePage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-16 mt-16 text-center text-[10px] font-black uppercase">
               <div>
-                <p className="mb-16">ZEN SUPPLIER</p>
+                <p className="mb-20">ZEN SUPPLIER</p>
                 <div className="w-32 h-px bg-black mx-auto"></div>
                 <p className="mt-2 text-gray-400">Pengirim</p>
               </div>
               <div>
-                <p className="mb-16">{selectedNote.note.kitchen_name}</p>
+                <p className="mb-20">{selectedNote.note.kitchen_name}</p>
                 <div className="w-32 h-px bg-black mx-auto"></div>
                 <p className="mt-2 text-gray-400">
                   Penerima

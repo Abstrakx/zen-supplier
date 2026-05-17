@@ -181,9 +181,9 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-slate-50 text-slate-900">
       {/* Header */}
-      <div className="px-8 py-4 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm">
+      <div className="px-8 py-4 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm print:hidden">
         <div className="flex items-center gap-4">
           <button
             onClick={onBack}
@@ -236,7 +236,7 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
               <Send size={14} /> TERUSKAN KE SJ
             </button>
           )}
-          {detail.order.status === "ordered" && (
+          {(detail.order.status === "ordered" || detail.order.status === "done") && (
             <button
               onClick={syncToDelivery}
               className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-xl text-xs font-extrabold shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 uppercase tracking-widest active:scale-95 print:hidden"
@@ -248,7 +248,7 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
       </div>
 
       {/* Printable Area (Hidden in UI, Shown on Print) */}
-      <div className="hidden print:block fixed inset-0 bg-white z-9999 p-10 text-black overflow-y-auto">
+      <div className="hidden print:block bg-white text-black p-10">
         <div className="flex justify-between items-start mb-10 border-b-2 border-slate-900 pb-6">
           <div>
             <h1 className="text-3xl font-black uppercase tracking-tighter text-slate-900">
@@ -304,7 +304,7 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
                     const itemSupplier = suppliers.find(s => s.id === item.supplier_id);
                     const isExternal = itemSupplier && !itemSupplier.is_internal;
                     return (
-                      <tr key={item.id} className={`border-b border-slate-100 ${isExternal ? "bg-amber-50" : ""}`}>
+                      <tr key={item.id} className={`border-b border-slate-100 print:break-inside-avoid ${isExternal ? "bg-amber-50" : ""}`}>
                         <td className="border border-slate-200 px-4 py-2 text-xs text-center">{idx + 1}</td>
                         <td className="border border-slate-200 px-4 py-2 text-xs uppercase">
                           {item.product_name}
@@ -335,7 +335,7 @@ export const DailyOrderDetailPage: React.FC<Props> = ({ orderId, onBack }) => {
       </div>
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8 print:hidden">
         <div className="max-w-7xl mx-auto space-y-8">
           {detail.sections.length === 0 && (
             <div className="text-center py-24 bg-white rounded-3xl border-2 border-dashed border-slate-200">

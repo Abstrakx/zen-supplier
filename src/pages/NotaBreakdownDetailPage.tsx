@@ -315,25 +315,25 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
         <style>
           {`
             @media print {
-              @page { size: 80mm auto; margin: 0; }
-              body { font-family: 'Courier New', Courier, monospace; font-size: 9pt; line-height: 1.2; color: #000; }
-              .thermal-nota { width: 72mm; margin: 0 auto; padding: 5mm 0; page-break-after: always; }
-              .thermal-header { text-align: center; margin-bottom: 4mm; border-bottom: 2px dashed #000; padding-bottom: 4mm; }
-              .thermal-store-name { font-size: 14pt; font-weight: 900; margin-bottom: 1mm; text-transform: uppercase; }
-              .thermal-store-info { font-size: 8pt; color: #333; }
-              .thermal-doc-title { font-size: 10pt; font-weight: bold; margin: 3mm 0; text-decoration: underline; }
+              @page { size: 58mm auto; margin: 0; }
+              body { font-family: 'Courier New', Courier, monospace; font-size: 8pt; line-height: 1.2; color: #000; }
+              .thermal-nota { width: 58mm; margin: 0 auto; padding: 3mm 0; page-break-after: always; }
+              .thermal-header { text-align: center; margin-bottom: 3mm; border-bottom: 1px dashed #000; padding-bottom: 3mm; }
+              .thermal-store-name { font-size: 11pt; font-weight: 900; margin-bottom: 0.5mm; text-transform: uppercase; }
+              .thermal-store-info { font-size: 7pt; color: #333; }
+              .thermal-doc-title { font-size: 9pt; font-weight: bold; margin: 2mm 0; text-decoration: underline; }
               
-              .thermal-info-grid { font-size: 8pt; margin-bottom: 3mm; border-bottom: 1px dashed #000; padding-bottom: 3mm; }
+              .thermal-info-grid { font-size: 7pt; margin-bottom: 2mm; border-bottom: 1px dashed #000; padding-bottom: 2mm; }
               .thermal-info-row { display: flex; justify-content: space-between; margin-bottom: 0.5mm; }
               
-              .thermal-item { margin-bottom: 3mm; }
-              .thermal-item-name { font-weight: bold; font-size: 9pt; text-transform: uppercase; }
-              .thermal-item-detail { display: flex; justify-content: space-between; font-size: 8pt; color: #444; }
+              .thermal-item { margin-bottom: 2mm; }
+              .thermal-item-name { font-weight: bold; font-size: 8pt; text-transform: uppercase; }
+              .thermal-item-detail { display: flex; justify-content: space-between; font-size: 7pt; color: #444; }
               
-              .thermal-totals { border-top: 2px dashed #000; margin-top: 3mm; padding-top: 3mm; }
-              .thermal-total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 11pt; }
+              .thermal-totals { border-top: 1px dashed #000; margin-top: 2mm; padding-top: 2mm; }
+              .thermal-total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 10pt; }
               
-              .thermal-footer { text-align: center; font-size: 8pt; margin-top: 8mm; padding-top: 4mm; border-top: 1px dashed #000; }
+              .thermal-footer { text-align: center; font-size: 7pt; margin-top: 5mm; padding-top: 3mm; border-top: 1px dashed #000; }
             }
           `}
         </style>
@@ -393,21 +393,6 @@ export const NotaBreakdownDetailPage: React.FC<Props> = ({ notaId, onBack }) => 
                   </div>
                 </div>
 
-                <div className="thermal-footer">
-                  <p style={{ marginBottom: '2mm' }}>Terima kasih atas kerja samanya.</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6mm' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontSize: '7pt' }}>Pengirim,</p>
-                      <div style={{ height: '10mm' }}></div>
-                      <p>( ____________ )</p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <p style={{ fontSize: '7pt' }}>Penerima,</p>
-                      <div style={{ height: '10mm' }}></div>
-                      <p>( ____________ )</p>
-                    </div>
-                  </div>
-                </div>
               </div>
             );
           })}

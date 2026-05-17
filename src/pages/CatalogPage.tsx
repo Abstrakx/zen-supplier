@@ -69,7 +69,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
   const opsCount = products.filter((p) => (p.item_type || "dapur") === "operational").length;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900 font-sans relative">
+    <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-slate-50 text-slate-900 font-sans relative">
       {/* Screen View */}
       <div className="flex-1 flex flex-col h-full overflow-hidden no-print">
         {/* Header */}
@@ -329,7 +329,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
 
       {/* Print Templates */}
       {printMode && (
-        <div className="hidden print:block fixed inset-0 bg-white z-9999 p-8 text-black font-sans">
+        <div className="hidden print:block bg-white p-8 text-black font-sans">
           {/* Print Header */}
           <div className="text-center mb-8 border-b-2 border-black pb-6">
             <h1 className="text-3xl font-black tracking-tighter">ZEN SUPPLIER</h1>
@@ -358,7 +358,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
                 {printMode === "internal" && (
                   <>
                     <th className="border border-black p-2 text-right w-16">MARGIN</th>
-                    <th className="border border-black p-2 text-left">CATATAN REVISI ✏️</th>
+                    <th className="border border-black p-2 text-left">CATATAN REVISI</th>
                   </>
                 )}
                 {printMode === "dapur" && (
@@ -374,7 +374,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
 
                 return (
                   <React.Fragment key={p.id}>
-                    <tr className="border-b border-black">
+                    <tr className="border-b border-black print:break-inside-avoid">
                       <td className="border border-black p-2 text-center">{idx + 1}</td>
                       <td className="border border-black p-2 font-bold">
                         {p.name} {p.neto && <span className="opacity-50 text-[8px]">@{p.neto}</span>}
@@ -391,12 +391,12 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
                             {supplier?.name || "-"}
                           </td>
                           <td className="border border-black p-2 text-right">
-                            {p.latest_buy_price?.toLocaleString("id-ID") || "-"}
+                            Rp. {p.latest_buy_price?.toLocaleString("id-ID") || "-"}
                           </td>
                         </>
                       )}
                       <td className="border border-black p-2 text-right font-black">
-                        {p.latest_sell_price?.toLocaleString("id-ID") || "-"}
+                        Rp. {p.latest_sell_price?.toLocaleString("id-ID") || "-"}
                       </td>
                       {printMode === "internal" && (
                         <>
@@ -421,17 +421,17 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
                     </tr>
                     {/* Unit Breakdown for Internal Print */}
                     {printMode === "internal" && p.units.filter(u => !u.is_base_unit).map(u => (
-                      <tr key={u.id} className="bg-gray-50/50 text-[8px]">
+                      <tr key={u.id} className="bg-gray-50/50 text-[8px] print:break-inside-avoid">
                         <td className="border border-black"></td>
                         <td className="border border-black p-1 pl-4 italic" colSpan={2}>
                           ↳ Satuan: {u.unit_name} (Konversi: {u.conversion_to_base} {p.base_unit})
                         </td>
                         <td className="border border-black"></td>
                         <td className="border border-black p-1 text-right opacity-60">
-                          {u.latest_buy_price?.toLocaleString("id-ID") || "-"}
+                          Rp. {u.latest_buy_price?.toLocaleString("id-ID") || "-"}
                         </td>
                         <td className="border border-black p-1 text-right font-bold">
-                          {u.latest_sell_price?.toLocaleString("id-ID") || "-"}
+                          Rp. {u.latest_sell_price?.toLocaleString("id-ID") || "-"}
                         </td>
                         <td className="border border-black"></td>
                         <td className="border border-black"></td>
@@ -449,18 +449,6 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ onNavigate, onViewProd
             </div>
           )}
 
-          <div className="mt-12 flex justify-end gap-20 text-[10px] font-black uppercase">
-            <div className="text-center">
-              <p className="mb-16 italic opacity-30">DICETAK OLEH,</p>
-              <div className="w-32 h-px bg-black mx-auto"></div>
-              <p className="mt-2">TIM ADMIN</p>
-            </div>
-            <div className="text-center">
-              <p className="mb-16 italic opacity-30">DISETUJUI OLEH,</p>
-              <div className="w-32 h-px bg-black mx-auto"></div>
-              <p className="mt-2">MANAGER OPERASIONAL</p>
-            </div>
-          </div>
         </div>
       )}
     </div>

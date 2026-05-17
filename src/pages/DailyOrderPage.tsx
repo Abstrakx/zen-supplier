@@ -175,9 +175,9 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex-1 flex flex-col h-full overflow-hidden print:h-auto print:overflow-visible bg-slate-50 text-slate-900">
       {/* Header */}
-      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm">
+      <div className="px-8 py-6 border-b border-slate-200 bg-white flex items-center justify-between shadow-sm print:hidden">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-50 rounded-xl border border-blue-100 shadow-sm">
             <ClipboardList size={20} className="text-blue-600" />
@@ -199,7 +199,7 @@ export const DailyOrderPage: React.FC<Props> = ({ onOpenDetail }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8 print:hidden">
         <div className="max-w-7xl mx-auto space-y-12">
           {loading && (
             <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">

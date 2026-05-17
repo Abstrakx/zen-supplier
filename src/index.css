@@ -339,10 +339,13 @@
 }
 
 @media print {
+  html,
   body {
     background: white !important;
     color: black !important;
     font-size: 12px !important;
+    overflow: visible !important;
+    height: auto !important;
   }
   .no-print,
   .print-hidden {

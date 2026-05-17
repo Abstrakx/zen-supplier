@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <aside
-      className={`${collapsed ? "w-[72px]" : "w-64"} bg-[#0d1117]/80 backdrop-blur-xl border-r border-white/6 flex flex-col h-full transition-all duration-300 ease-in-out relative z-50`}
+      className={`${collapsed ? "w-[72px]" : "w-64"} bg-[#0d1117]/80 backdrop-blur-xl border-r border-white/6 flex flex-col h-full transition-all duration-300 ease-in-out relative z-50 print:hidden`}
     >
       {/* Logo */}
       <div

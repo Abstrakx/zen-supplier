@@ -117,14 +117,14 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-950 overflow-hidden font-sans text-slate-100">
+    <div className="flex h-screen bg-slate-950 overflow-hidden print:overflow-visible print:h-auto font-sans text-slate-100">
       <Sidebar
         activeNav={activeNav}
         onNavigate={setActiveNav}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <main className="flex-1 overflow-hidden relative">{renderPage()}</main>
+      <main className="flex-1 overflow-hidden print:overflow-visible print:h-auto relative">{renderPage()}</main>
     </div>
   );
 }
